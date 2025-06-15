@@ -1,0 +1,151 @@
+import type {
+	ExprVisitor,
+	BinaryExpr,
+	Expr,
+	GroupingExpr,
+	LiteralExpr,
+	UnaryExpr,
+} from "./codegen/Expr";
+import type {
+	ExpressionStmt,
+	PrintStmt,
+	Stmt,
+	StmtVisitor,
+} from "./codegen/Stmt";
+import { Lox } from "./Lox";
+import type { Token } from "./Token";
+import { TokenType } from "./TokenType";
+
+export class RuntimeError extends Error {
+	token: Token;
+
+	constructor(token: Token, message: string) {
+		super(message);
+		this.token = token;
+	}
+}
+
+export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
+	interpret(stmts: Stmt[]) {
+		try {
+			for (const stmt of stmts) {
+				this.execute(stmt);
+			}
+		} catch (error) {
+			if (error instanceof RuntimeError) {
+				Lox.runtimeError(error);
+			}
+		}
+	}
+
+	execute(stmt: Stmt): void {
+		stmt.accept(this);
+	}
+
+	stringify(value: unknown): string {
+		if (value === null) return "nil";
+		return `${value}`;
+	}
+
+	visitExpressionStmt(stmt: ExpressionStmt): void {
+		this.evaluate(stmt.expression);
+	}
+
+	visitPrintStmt(stmt: PrintStmt): void {
+		const value = this.evaluate(stmt.expression);
+		console.log(this.stringify(value));
+	}
+
+	visitBinaryExpr(binary: BinaryExpr): unknown {
+		const left = this.evaluate(binary.left);
+		const right = this.evaluate(binary.right);
+
+		switch (binary.operator.type) {
+			case TokenType.BANG_EQUAL:
+				return !this.isEqual(left, right);
+			case TokenType.EQUAL_EQUAL:
+				return this.isEqual(left, right);
+			case TokenType.GREATER:
+				this.checkNumberOperands(binary.operator, left, right);
+				return Number(left) > Number(right);
+			case TokenType.GREATER_EQUAL:
+				this.checkNumberOperands(binary.operator, left, right);
+				return Number(left) >= Number(right);
+			case TokenType.LESS:
+				this.checkNumberOperands(binary.operator, left, right);
+				return Number(left) < Number(right);
+			case TokenType.LESS_EQUAL:
+				this.checkNumberOperands(binary.operator, left, right);
+				return Number(left) <= Number(right);
+			case TokenType.MINUS:
+				this.checkNumberOperands(binary.operator, left, right);
+				return Number(left) - Number(right);
+			case TokenType.PLUS:
+				if (typeof left === "string" && typeof right === "string") {
+					return String(left) + String(right);
+				}
+				if (typeof left === "number" && typeof right === "number") {
+					return Number(left) + Number(right);
+				}
+				throw new RuntimeError(
+					binary.operator,
+					"Operands must be two numbers or two strings.",
+				);
+			case TokenType.SLASH:
+				this.checkNumberOperands(binary.operator, left, right);
+				return Number(left) / Number(right);
+			case TokenType.STAR:
+				this.checkNumberOperands(binary.operator, left, right);
+				return Number(left) * Number(right);
+		}
+
+		return null;
+	}
+	visitGroupingExpr(grouping: GroupingExpr): unknown {
+		return this.evaluate(grouping.expression);
+	}
+	visitLiteralExpr(literal: LiteralExpr): unknown {
+		return literal.value;
+	}
+	visitUnaryExpr(unary: UnaryExpr): unknown {
+		const right = this.evaluate(unary.right);
+
+		switch (unary.operator.type) {
+			case TokenType.BANG:
+				return !this.isTruthy(right);
+			case TokenType.MINUS:
+				this.checkNumberOperand(unary.operator, right);
+				return -Number(right);
+		}
+
+		return null;
+	}
+
+	private evaluate(expr: Expr): unknown {
+		return expr.accept(this);
+	}
+
+	private isTruthy(value: unknown): boolean {
+		if (value === null) return false;
+		if (typeof value === "boolean") return Boolean(value);
+		return true;
+	}
+
+	private isEqual(left: unknown, right: unknown): boolean {
+		if (left === null && right === null) return true;
+		if (left === null) return false;
+		return left === right;
+	}
+
+	private checkNumberOperand(operator: Token, operand: unknown) {
+		if (typeof operand !== "number") {
+			throw new RuntimeError(operator, "Operand must be a number.");
+		}
+	}
+
+	private checkNumberOperands(operator: Token, left: unknown, right: unknown) {
+		if (typeof left !== "number" || typeof right !== "number") {
+			throw new RuntimeError(operator, "Operands must be numbers.");
+		}
+	}
+}

@@ -5,13 +5,18 @@ import type {
 	GroupingExpr,
 	LiteralExpr,
 	UnaryExpr,
+	VariableExpr,
+	AssignExpr,
 } from "./codegen/Expr";
 import type {
+	BlockStmt,
 	ExpressionStmt,
 	PrintStmt,
 	Stmt,
 	StmtVisitor,
+	VariableStmt,
 } from "./codegen/Stmt";
+import { Environment } from "./Environment";
 import { Lox } from "./Lox";
 import type { Token } from "./Token";
 import { TokenType } from "./TokenType";
@@ -26,6 +31,8 @@ export class RuntimeError extends Error {
 }
 
 export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
+	private environment = new Environment()
+
 	interpret(stmts: Stmt[]) {
 		try {
 			for (const stmt of stmts) {
@@ -47,6 +54,10 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		return `${value}`;
 	}
 
+	visitBlockStmt(stmt: BlockStmt): void {
+		this.executeBlock(stmt.statements, new Environment(this.environment))
+	}
+
 	visitExpressionStmt(stmt: ExpressionStmt): void {
 		this.evaluate(stmt.expression);
 	}
@@ -54,6 +65,20 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	visitPrintStmt(stmt: PrintStmt): void {
 		const value = this.evaluate(stmt.expression);
 		console.log(this.stringify(value));
+	}
+	
+	visitVariableStmt(stmt: VariableStmt): void {
+		let value: unknown = null
+		if (stmt.initializer !== null) {
+			value = this.evaluate(stmt.initializer)
+		}
+		this.environment.define(stmt.name.lexeme, value)
+	}
+
+	visitAssignExpr(expr: AssignExpr): unknown {
+		const value = this.evaluate(expr.value)
+		this.environment.assign(expr.name, value)
+		return value
 	}
 
 	visitBinaryExpr(binary: BinaryExpr): unknown {
@@ -101,12 +126,15 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 
 		return null;
 	}
+	
 	visitGroupingExpr(grouping: GroupingExpr): unknown {
 		return this.evaluate(grouping.expression);
 	}
+
 	visitLiteralExpr(literal: LiteralExpr): unknown {
 		return literal.value;
 	}
+
 	visitUnaryExpr(unary: UnaryExpr): unknown {
 		const right = this.evaluate(unary.right);
 
@@ -119,6 +147,22 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		}
 
 		return null;
+	}
+
+	visitVariableExpr(variable: VariableExpr): unknown {
+		return this.environment.get(variable.name)
+	}
+
+	private executeBlock(statements: Stmt[], environment: Environment) {
+		const prevEnvironment = this.environment;
+		try {
+			this.environment = environment
+			for (const stmt of statements) {
+				this.execute(stmt)
+			}
+		} finally {
+			this.environment = prevEnvironment
+		}
 	}
 
 	private evaluate(expr: Expr): unknown {

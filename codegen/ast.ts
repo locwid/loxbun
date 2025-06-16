@@ -91,10 +91,12 @@ defineAst(
 	args[2],
 	"Expr",
 	[
+		"Assign   -> name: Token, value: Expr",
 		"Binary   -> left: Expr, operator: Token, right: Expr",
 		"Grouping -> expression: Expr",
 		"Literal  -> value: unknown",
 		"Unary    -> operator: Token, right: Expr",
+		"Variable -> name: Token"
 	],
 	["import { Token } from 'src/Token';"],
 );
@@ -102,6 +104,14 @@ defineAst(
 defineAst(
 	args[2],
 	"Stmt",
-	["Expression -> expression: Expr", "Print      -> expression: Expr"],
-	["import { Expr } from './Expr';"],
+	[
+		"Block      -> statements: Stmt[] = []",
+		"Expression -> expression: Expr", 
+		"Print      -> expression: Expr", 
+		"Variable   -> name: Token, initializer: Expr | null"
+	],
+	[
+		"import { Expr } from './Expr';", 
+		"import { Token } from 'src/Token';"
+	],
 );

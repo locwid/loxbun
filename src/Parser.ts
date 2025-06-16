@@ -1,11 +1,13 @@
 import {
+	AssignExpr,
 	BinaryExpr,
 	Expr,
 	GroupingExpr,
 	LiteralExpr,
 	UnaryExpr,
+	VariableExpr,
 } from "./codegen/Expr";
-import { ExpressionStmt, PrintStmt, type Stmt } from "./codegen/Stmt";
+import { BlockStmt, ExpressionStmt, PrintStmt, VariableStmt, type Stmt } from "./codegen/Stmt";
 import { Lox } from "./Lox";
 import { Token } from "./Token";
 import { TokenType } from "./TokenType";
@@ -23,14 +25,44 @@ export class Parser {
 	public parse(): Stmt[] {
 		const statements: Stmt[] = [];
 		while (!this.isAtEnd()) {
-			statements.push(this.statement());
+			const stmt = this.declaration()
+			if (stmt) {
+				statements.push(stmt);
+			}
 		}
 		return statements;
+	}
+
+	private declaration(): Stmt | null {
+		try {
+			if (this.match(TokenType.VAR)) {
+				return this.varDeclaration()
+			}
+			return this.statement()
+		} catch (error) {
+			if (error instanceof ParseError) {
+				this.synchronize()
+				return null
+			}
+			return null
+		}
+	}
+
+	private varDeclaration(): Stmt {
+		const name = this.consume(TokenType.IDENTIFIER, "Expect variable name.")
+
+		let initializer = this.match(TokenType.EQUAL) ? this.expression() : null;
+
+		this.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+		return new VariableStmt(name, initializer)
 	}
 
 	private statement(): Stmt {
 		if (this.match(TokenType.PRINT)) {
 			return this.printStatement();
+		}
+		if (this.match(TokenType.LEFT_BRACE)) {
+			return new BlockStmt(this.block())
 		}
 		return this.expressionStmt();
 	}
@@ -47,8 +79,35 @@ export class Parser {
 		return new ExpressionStmt(expr);
 	}
 
+	private block() {
+		const statements: Stmt[] = []
+		while(!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
+			const statement = this.declaration()
+			if (statement) {
+				statements.push(statement)
+			}
+		}
+		this.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+		return statements
+	}
+
 	private expression(): Expr {
-		return this.equality();
+		return this.assignment();
+	}
+
+	private assignment(): Expr {
+		const expr = this.equality()
+
+		if (this.match(TokenType.EQUAL)) {
+			const equals = this.previous()
+			const value = this.assignment()
+			if (expr instanceof VariableExpr) {
+				return new AssignExpr(expr.name, value)
+			}
+			this.error(equals, "Invalid assignment targe.")
+		}
+
+		return expr
 	}
 
 	private equality(): Expr {
@@ -129,6 +188,10 @@ export class Parser {
 
 		if (this.match(TokenType.STRING, TokenType.NUMBER)) {
 			return new LiteralExpr(this.previous().literal);
+		}
+
+		if (this.match(TokenType.IDENTIFIER)) {
+			return new VariableExpr(this.previous())
 		}
 
 		if (this.match(TokenType.LEFT_PAREN)) {

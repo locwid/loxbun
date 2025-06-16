@@ -110,7 +110,8 @@ defineAst(
 		"Expression -> expression: Expr", 
 		"Condition  -> condition: Expr, thenBranch: Stmt, elseBranch: Stmt | null",
 		"Print      -> expression: Expr", 
-		"Variable   -> name: Token, initializer: Expr | null"
+		"Variable   -> name: Token, initializer: Expr | null",
+		"WhileLoop  -> condition: Expr, body: Stmt",
 	],
 	[
 		"import { Expr } from './Expr';", 

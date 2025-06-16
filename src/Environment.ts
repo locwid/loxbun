@@ -26,13 +26,13 @@ export class Environment {
   }
 
   get(name: Token): unknown {
-    const value = this.values.get(name.lexeme)
-    if (value) {
-      return value
+    if (this.values.has(name.lexeme)) {
+      return this.values.get(name.lexeme)
     }
     if (this.enclosing) {
       return this.enclosing.get(name)
     }
+    console.log(name, this)
     throw new RuntimeError(name, `Undefined variable ${name.lexeme}.`)
   }
 }

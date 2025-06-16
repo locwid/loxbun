@@ -17,6 +17,7 @@ import type {
 	Stmt,
 	StmtVisitor,
 	VariableStmt,
+	WhileLoopStmt,
 } from "./codegen/Stmt";
 import { Environment } from "./Environment";
 import { Lox } from "./Lox";
@@ -54,6 +55,12 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	stringify(value: unknown): string {
 		if (value === null) return "nil";
 		return `${value}`;
+	}
+
+	visitWhileLoopStmt(stmt: WhileLoopStmt): void {
+		while (this.isTruthy(this.evaluate(stmt.condition))) {
+			this.execute(stmt.body)
+		}
 	}
 
 	visitConditionStmt(stmt: ConditionStmt): void {

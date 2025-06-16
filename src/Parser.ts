@@ -8,7 +8,7 @@ import {
 	UnaryExpr,
 	VariableExpr,
 } from "./codegen/Expr";
-import { BlockStmt, ConditionStmt, ExpressionStmt, PrintStmt, VariableStmt, type Stmt } from "./codegen/Stmt";
+import { BlockStmt, ConditionStmt, ExpressionStmt, PrintStmt, VariableStmt, WhileLoopStmt, type Stmt } from "./codegen/Stmt";
 import { Lox } from "./Lox";
 import { Token } from "./Token";
 import { TokenType } from "./TokenType";
@@ -59,16 +59,22 @@ export class Parser {
 	}
 
 	private statement(): Stmt {
+		if (this.match(TokenType.FOR)) {
+			return this.forStatement();
+		}
 		if (this.match(TokenType.IF)) {
 			return this.ifStatement();
 		}
 		if (this.match(TokenType.PRINT)) {
 			return this.printStatement();
 		}
+		if (this.match(TokenType.WHILE)) {
+			return this.whileStatement();
+		}
 		if (this.match(TokenType.LEFT_BRACE)) {
 			return new BlockStmt(this.block())
 		}
-		return this.expressionStmt();
+		return this.expressionStatement();
 	}
 
 	private printStatement(): Stmt {
@@ -77,16 +83,65 @@ export class Parser {
 		return new PrintStmt(expr);
 	}
 
-	private expressionStmt(): Stmt {
+	private forStatement(): Stmt {
+		this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+
+		let initializer: Stmt | null = null
+		if (this.match(TokenType.SEMICOLON)) {
+			initializer = null
+		} else if (this.match(TokenType.VAR)) {
+			initializer = this.varDeclaration()
+		} else {
+			initializer = this.expressionStatement()
+		}
+
+		let condition: Expr | null = null
+		if (!this.check(TokenType.SEMICOLON)) {
+			condition = this.expression()
+		}
+		this.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
+
+		let increment: Expr | null = null
+		if (!this.check(TokenType.RIGHT_PAREN)) {
+			increment = this.expression()
+		}
+		this.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
+		let body = this.statement()
+
+		if (increment) {
+			body = new BlockStmt([body, new ExpressionStmt(increment)])
+		}
+
+		if (condition === null) {
+			condition = new LiteralExpr(true)
+		}
+		body = new WhileLoopStmt(condition, body)
+
+		if (initializer) {
+			body = new BlockStmt([initializer, body])
+		}
+
+		return body
+	}
+
+	private whileStatement(): Stmt {
+		this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+		const condition = this.expression()
+		this.consume(TokenType.RIGHT_PAREN, "Expect ')' after while condition.");
+		const body = this.statement()
+		return new WhileLoopStmt(condition, body)
+	}
+
+	private expressionStatement(): Stmt {
 		const expr = this.expression();
 		this.consume(TokenType.SEMICOLON, "Expect ';' after expression.");
 		return new ExpressionStmt(expr);
 	}
 
 	private ifStatement(): Stmt {
-		this.consume(TokenType.LEFT_BRACE, "Expect '(' after 'if'.")
+		this.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
 		const condition = this.expression()
-		this.consume(TokenType.RIGHT_BRACE, "Expect ')' after if condition.")
+		this.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.")
 
 		const thenBranch = this.statement();
 		let elseBranch: Stmt | null = null;

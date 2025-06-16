@@ -7,9 +7,11 @@ import type {
 	UnaryExpr,
 	VariableExpr,
 	AssignExpr,
+	LogicalExpr,
 } from "./codegen/Expr";
 import type {
 	BlockStmt,
+	ConditionStmt,
 	ExpressionStmt,
 	PrintStmt,
 	Stmt,
@@ -54,6 +56,14 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		return `${value}`;
 	}
 
+	visitConditionStmt(stmt: ConditionStmt): void {
+		if (this.isTruthy(this.evaluate(stmt.condition))) {
+			this.execute(stmt.thenBranch)
+		} else if (stmt.elseBranch) {
+			this.execute(stmt.elseBranch)
+		}
+	}
+
 	visitBlockStmt(stmt: BlockStmt): void {
 		this.executeBlock(stmt.statements, new Environment(this.environment))
 	}
@@ -73,6 +83,22 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 			value = this.evaluate(stmt.initializer)
 		}
 		this.environment.define(stmt.name.lexeme, value)
+	}
+
+	visitLogicalExpr(expr: LogicalExpr): unknown {
+		const left = this.evaluate(expr.left)
+
+		if (expr.operator.type === TokenType.OR) {
+			if (this.isTruthy(left)) {
+				return left
+			}
+		} else {
+			if (!this.isTruthy(left)) {
+				return left
+			}
+		}
+
+		return this.evaluate(expr.right)
 	}
 
 	visitAssignExpr(expr: AssignExpr): unknown {

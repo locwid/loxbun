@@ -4,10 +4,11 @@ import {
 	Expr,
 	GroupingExpr,
 	LiteralExpr,
+	LogicalExpr,
 	UnaryExpr,
 	VariableExpr,
 } from "./codegen/Expr";
-import { BlockStmt, ExpressionStmt, PrintStmt, VariableStmt, type Stmt } from "./codegen/Stmt";
+import { BlockStmt, ConditionStmt, ExpressionStmt, PrintStmt, VariableStmt, type Stmt } from "./codegen/Stmt";
 import { Lox } from "./Lox";
 import { Token } from "./Token";
 import { TokenType } from "./TokenType";
@@ -58,6 +59,9 @@ export class Parser {
 	}
 
 	private statement(): Stmt {
+		if (this.match(TokenType.IF)) {
+			return this.ifStatement();
+		}
 		if (this.match(TokenType.PRINT)) {
 			return this.printStatement();
 		}
@@ -79,6 +83,20 @@ export class Parser {
 		return new ExpressionStmt(expr);
 	}
 
+	private ifStatement(): Stmt {
+		this.consume(TokenType.LEFT_BRACE, "Expect '(' after 'if'.")
+		const condition = this.expression()
+		this.consume(TokenType.RIGHT_BRACE, "Expect ')' after if condition.")
+
+		const thenBranch = this.statement();
+		let elseBranch: Stmt | null = null;
+		if (this.match(TokenType.ELSE)) {
+			elseBranch = this.statement()
+		}
+
+		return new ConditionStmt(condition, thenBranch, elseBranch)
+	}
+
 	private block() {
 		const statements: Stmt[] = []
 		while(!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
@@ -96,7 +114,7 @@ export class Parser {
 	}
 
 	private assignment(): Expr {
-		const expr = this.equality()
+		const expr = this.or()
 
 		if (this.match(TokenType.EQUAL)) {
 			const equals = this.previous()
@@ -105,6 +123,30 @@ export class Parser {
 				return new AssignExpr(expr.name, value)
 			}
 			this.error(equals, "Invalid assignment targe.")
+		}
+
+		return expr
+	}
+
+	private or(): Expr {
+		let expr = this.and()
+
+		while (this.match(TokenType.OR)) {
+			const operator = this.previous()
+			const right = this.and()
+			expr = new LogicalExpr(expr, operator, right)
+		}
+
+		return expr
+	}
+
+	private and(): Expr {
+		let expr = this.equality();
+
+		while (this.match(TokenType.AND)) {
+			const operator = this.previous()
+			const right = this.equality()
+			expr = new LogicalExpr(expr, operator, right)
 		}
 
 		return expr

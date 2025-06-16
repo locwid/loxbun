@@ -95,6 +95,7 @@ defineAst(
 		"Binary   -> left: Expr, operator: Token, right: Expr",
 		"Grouping -> expression: Expr",
 		"Literal  -> value: unknown",
+		"Logical  -> left: Expr, operator: Token, right: Expr",
 		"Unary    -> operator: Token, right: Expr",
 		"Variable -> name: Token"
 	],
@@ -107,6 +108,7 @@ defineAst(
 	[
 		"Block      -> statements: Stmt[] = []",
 		"Expression -> expression: Expr", 
+		"Condition  -> condition: Expr, thenBranch: Stmt, elseBranch: Stmt | null",
 		"Print      -> expression: Expr", 
 		"Variable   -> name: Token, initializer: Expr | null"
 	],

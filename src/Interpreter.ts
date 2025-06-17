@@ -109,7 +109,7 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	}
 
 	visitFnStmt(stmt: FnStmt): void {
-		const fn = new LoxFunction(stmt)
+		const fn = new LoxFunction(stmt, this.environment)
 		this.environment.define(stmt.name.lexeme, fn)
 	}
 

@@ -5,17 +5,19 @@ import { LoxCallable } from "./LoxCallable";
 
 export class LoxFunction extends LoxCallable {
   declaration: FnStmt
+  closure: Environment
 
-  constructor(declaration: FnStmt) {
+  constructor(declaration: FnStmt, closure: Environment) {
     super()
     this.declaration = declaration
+    this.closure = closure
   }
 
   arity(): number {
     return this.declaration.params.length
   }
   call(interpreter: Interpreter, ...args: unknown[]): unknown {
-    const environment = new Environment(interpreter.globals)
+    const environment = new Environment(this.closure)
     for (let i = 0; i < this.declaration.params.length; i++) {
       const arg = this.declaration.params[i]
       if (!arg) {

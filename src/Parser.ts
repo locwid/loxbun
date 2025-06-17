@@ -9,7 +9,7 @@ import {
 	UnaryExpr,
 	VariableExpr,
 } from "./codegen/Expr";
-import { BlockStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, VariableStmt, WhileLoopStmt, type Stmt } from "./codegen/Stmt";
+import { BlockStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, VariableStmt, WhileLoopStmt, type Stmt } from "./codegen/Stmt";
 import { RuntimeError } from "./Interpreter";
 import { Lox } from "./Lox";
 import { Token } from "./Token";
@@ -94,6 +94,9 @@ export class Parser {
 		if (this.match(TokenType.PRINT)) {
 			return this.printStatement();
 		}
+		if (this.match(TokenType.RETURN)) {
+			return this.returnStatement();
+		}
 		if (this.match(TokenType.WHILE)) {
 			return this.whileStatement();
 		}
@@ -101,6 +104,16 @@ export class Parser {
 			return new BlockStmt(this.block())
 		}
 		return this.expressionStatement();
+	}
+
+	private returnStatement() {
+		const keyword = this.previous()
+		let value: Expr | null = null
+		if (!this.check(TokenType.SEMICOLON)) {
+			value = this.expression()
+		}
+		this.consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+		return new ReturnValStmt(keyword, value)
 	}
 
 	private printStatement(): Stmt {

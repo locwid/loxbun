@@ -1,6 +1,6 @@
 import type { FnStmt } from "./codegen/Stmt";
 import { Environment } from "./Environment";
-import { type Interpreter } from "./Interpreter";
+import { Return, type Interpreter } from "./Interpreter";
 import { LoxCallable } from "./LoxCallable";
 
 export class LoxFunction extends LoxCallable {
@@ -23,7 +23,14 @@ export class LoxFunction extends LoxCallable {
       }
       environment.define(arg.lexeme, args[i])
     }
-    interpreter.executeBlock(this.declaration.body, environment)
+    try {
+      interpreter.executeBlock(this.declaration.body, environment)
+    } catch (error) {
+      if (error instanceof Return) {
+        return error.value
+      }
+    }
+    
     return null
   }
   toString(): string {

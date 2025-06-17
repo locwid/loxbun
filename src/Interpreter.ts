@@ -16,6 +16,7 @@ import type {
 	ExpressionStmt,
 	FnStmt,
 	PrintStmt,
+	ReturnValStmt,
 	Stmt,
 	StmtVisitor,
 	VariableStmt,
@@ -34,6 +35,15 @@ export class RuntimeError extends Error {
 	constructor(token: Token, message: string) {
 		super(message);
 		this.token = token;
+	}
+}
+
+export class Return extends Error {
+	value: unknown
+
+	constructor(value: unknown) {
+		super()
+		this.value = value
 	}
 }
 
@@ -80,6 +90,14 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		while (this.isTruthy(this.evaluate(stmt.condition))) {
 			this.execute(stmt.body)
 		}
+	}
+
+	visitReturnValStmt(stmt: ReturnValStmt): void {
+		let value: unknown = null
+		if (stmt.value != null) {
+			value = this.evaluate(stmt.value)
+		}
+		throw new Return(value)
 	}
 
 	visitConditionStmt(stmt: ConditionStmt): void {

@@ -32,7 +32,6 @@ export class Environment {
     if (this.enclosing) {
       return this.enclosing.get(name)
     }
-    console.log(name, this)
     throw new RuntimeError(name, `Undefined variable ${name.lexeme}.`)
   }
 }

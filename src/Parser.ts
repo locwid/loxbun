@@ -1,6 +1,7 @@
 import {
 	AssignExpr,
 	BinaryExpr,
+	CallExpr,
 	Expr,
 	GroupingExpr,
 	LiteralExpr,
@@ -8,10 +9,14 @@ import {
 	UnaryExpr,
 	VariableExpr,
 } from "./codegen/Expr";
-import { BlockStmt, ConditionStmt, ExpressionStmt, PrintStmt, VariableStmt, WhileLoopStmt, type Stmt } from "./codegen/Stmt";
+import { BlockStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, VariableStmt, WhileLoopStmt, type Stmt } from "./codegen/Stmt";
+import { RuntimeError } from "./Interpreter";
 import { Lox } from "./Lox";
 import { Token } from "./Token";
 import { TokenType } from "./TokenType";
+
+// Javascript core limitation, exclude 1 by passing interpreter to caller
+const FN_MAX_ARGS = 65536 - 1
 
 class ParseError extends Error {}
 
@@ -36,6 +41,9 @@ export class Parser {
 
 	private declaration(): Stmt | null {
 		try {
+			if (this.match(TokenType.FUN)) {
+				return this.fnDeclaration("function");
+			}
 			if (this.match(TokenType.VAR)) {
 				return this.varDeclaration()
 			}
@@ -47,6 +55,24 @@ export class Parser {
 			}
 			return null
 		}
+	}
+
+	private fnDeclaration(kind: string): Stmt {
+		const name = this.consume(TokenType.IDENTIFIER, `Expect ${kind} name.`)
+		this.consume(TokenType.LEFT_PAREN, `Expect '(' after ${kind} name.`)
+		const params: Token[] = []
+		if (!this.check(TokenType.RIGHT_PAREN)) {
+			do {	
+				if (params.length >= FN_MAX_ARGS) {
+					throw new RuntimeError(name, `Can't have more that ${FN_MAX_ARGS} parametres.`)
+				}
+				params.push(this.consume(TokenType.IDENTIFIER, "Expect parameter name."))
+			} while(this.match(TokenType.COMMA))
+		}
+		this.consume(TokenType.RIGHT_PAREN, "Expect '(' after parameters.")
+		this.consume(TokenType.LEFT_BRACE, `Expect '{' before ${kind} name.`)
+		const body = this.block()
+		return new FnStmt(name, params, body)
 	}
 
 	private varDeclaration(): Stmt {
@@ -269,7 +295,36 @@ export class Parser {
 			return new UnaryExpr(operator, right);
 		}
 
-		return this.primary();
+		return this.call();
+	}
+
+	private call(): Expr {
+		let expr = this.primary()
+
+		while (true) {
+			if (this.match(TokenType.LEFT_PAREN)) {
+				expr = this.finishCall(expr)
+			} else {
+				break
+			}
+		}
+
+		return expr;
+	}
+
+	private finishCall(callee: Expr): Expr {
+		const args: Expr[] = []
+		if (!this.check(TokenType.RIGHT_PAREN)) {
+			do {
+				if (arguments.length >= FN_MAX_ARGS) {
+					this.error(this.peek(), `Can't have more than ${FN_MAX_ARGS} arguments.`)
+				}
+				args.push(this.expression())
+			} while (this.match(TokenType.COMMA))
+		}
+
+		const paren = this.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+		return new CallExpr(callee, paren, args)
 	}
 
 	private primary(): Expr {

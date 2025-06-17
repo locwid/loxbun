@@ -8,11 +8,13 @@ import type {
 	VariableExpr,
 	AssignExpr,
 	LogicalExpr,
+	CallExpr,
 } from "./codegen/Expr";
 import type {
 	BlockStmt,
 	ConditionStmt,
 	ExpressionStmt,
+	FnStmt,
 	PrintStmt,
 	Stmt,
 	StmtVisitor,
@@ -21,7 +23,9 @@ import type {
 } from "./codegen/Stmt";
 import { Environment } from "./Environment";
 import { Lox } from "./Lox";
-import type { Token } from "./Token";
+import { LoxCallable } from "./LoxCallable";
+import { LoxFunction } from "./LoxFunction";
+import { Token } from "./Token";
 import { TokenType } from "./TokenType";
 
 export class RuntimeError extends Error {
@@ -34,7 +38,22 @@ export class RuntimeError extends Error {
 }
 
 export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
-	private environment = new Environment()
+	globals = new Environment()
+	private environment = this.globals
+
+	constructor() {
+		this.globals.define("clock", new class extends LoxCallable {
+			arity(): number {
+				return 0
+			}
+			call(_: Interpreter, ...__: unknown[]): unknown {
+				return new Date().getTime() / 1000;
+			}
+			toString(): string {
+				return '<native fn>'
+			}
+		})
+	}
 
 	interpret(stmts: Stmt[]) {
 		try {
@@ -69,6 +88,11 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		} else if (stmt.elseBranch) {
 			this.execute(stmt.elseBranch)
 		}
+	}
+
+	visitFnStmt(stmt: FnStmt): void {
+		const fn = new LoxFunction(stmt)
+		this.environment.define(stmt.name.lexeme, fn)
 	}
 
 	visitBlockStmt(stmt: BlockStmt): void {
@@ -114,9 +138,27 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		return value
 	}
 
+	visitCallExpr(expr: CallExpr): unknown {
+		const callee = this.evaluate(expr.callee)
+
+		const args: unknown[] = []
+		for (const arg of expr.args) {
+			args.push(this.evaluate(arg))
+		}
+
+		if (!(callee instanceof LoxCallable)) {
+			throw new RuntimeError(expr.paren, "Can only call functions and classes.")
+		}
+		if (args.length !== callee.arity()) {
+			throw new RuntimeError(expr.paren, `Expected ${callee.arity()} arguments but got ${args.length}.`)
+		}
+
+		return callee.call(this, ...args)
+	}
+
 	visitBinaryExpr(binary: BinaryExpr): unknown {
-		const left = this.evaluate(binary.left);
-		const right = this.evaluate(binary.right);
+		let left = this.evaluate(binary.left);
+		let right = this.evaluate(binary.right);
 
 		switch (binary.operator.type) {
 			case TokenType.BANG_EQUAL:
@@ -186,7 +228,7 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		return this.environment.get(variable.name)
 	}
 
-	private executeBlock(statements: Stmt[], environment: Environment) {
+	executeBlock(statements: Stmt[], environment: Environment) {
 		const prevEnvironment = this.environment;
 		try {
 			this.environment = environment

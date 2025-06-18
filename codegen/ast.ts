@@ -94,6 +94,7 @@ defineAst(
 		"Assign   -> name: Token, value: Expr",
 		"Binary   -> left: Expr, operator: Token, right: Expr",
 		"Call     -> callee: Expr, paren: Token, args: Expr[]",
+		"GetField -> obj: Expr, name: Token",
 		"Grouping -> expression: Expr",
 		"Literal  -> value: unknown",
 		"Logical  -> left: Expr, operator: Token, right: Expr",
@@ -108,6 +109,7 @@ defineAst(
 	"Stmt",
 	[
 		"Block      -> statements: Stmt[]",
+		"Cls        -> name: Token, methods: FnStmt[]",
 		"Expression -> expression: Expr", 
 		"Condition  -> condition: Expr, thenBranch: Stmt, elseBranch: Stmt | null",
 		"Fn         -> name: Token, params: Token[], body: Stmt[]",

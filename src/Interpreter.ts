@@ -9,9 +9,11 @@ import type {
 	AssignExpr,
 	LogicalExpr,
 	CallExpr,
+	GetFieldExpr,
 } from "./codegen/Expr";
 import type {
 	BlockStmt,
+	ClsStmt,
 	ConditionStmt,
 	ExpressionStmt,
 	FnStmt,
@@ -25,7 +27,9 @@ import type {
 import { Environment } from "./Environment";
 import { Lox } from "./Lox";
 import { LoxCallable } from "./LoxCallable";
+import { LoxClass } from "./LoxClass";
 import { LoxFunction } from "./LoxFunction";
+import { LoxInstance } from "./LoxInstance";
 import { Token } from "./Token";
 import { TokenType } from "./TokenType";
 
@@ -91,6 +95,12 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		return `${value}`;
 	}
 
+	visitClsStmt(stmt: ClsStmt): void {
+		this.environment.define(stmt.name.lexeme, null)
+		const cls = new LoxClass(stmt.name.lexeme)
+		this.environment.assign(stmt.name, cls)
+	}
+
 	visitWhileLoopStmt(stmt: WhileLoopStmt): void {
 		while (this.isTruthy(this.evaluate(stmt.condition))) {
 			this.execute(stmt.body)
@@ -137,6 +147,14 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 			value = this.evaluate(stmt.initializer)
 		}
 		this.environment.define(stmt.name.lexeme, value)
+	}
+
+	visitGetFieldExpr(field: GetFieldExpr): unknown {
+		const obj = this.evaluate(field.obj)
+		if (obj instanceof LoxInstance) {
+			return obj.get(field.name)
+		}
+		throw new RuntimeError(field.name, "Only instances have properties.")
 	}
 
 	visitLogicalExpr(expr: LogicalExpr): unknown {

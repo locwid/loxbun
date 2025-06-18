@@ -1,5 +1,5 @@
-import type { AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr, VariableExpr } from "./codegen/Expr";
-import type { BlockStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, Stmt, StmtVisitor, VariableStmt, WhileLoopStmt } from "./codegen/Stmt";
+import type { AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, FieldExpr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr, VariableExpr } from "./codegen/Expr";
+import type { BlockStmt, ClsStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, Stmt, StmtVisitor, VariableStmt, WhileLoopStmt } from "./codegen/Stmt";
 import type { Interpreter } from "./Interpreter";
 import { Lox } from "./Lox";
 import type { Token } from "./Token";
@@ -18,6 +18,16 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.interpreter = interpreter
     this.scopes = []
   }
+
+
+  visitFieldExpr(field: FieldExpr): void {
+    this.resolveExpr(field.obj)
+  }
+
+	visitClsStmt(cls: ClsStmt): void {
+		this.declare(cls.name)
+    this.define(cls.name)
+	}
 
   visitBlockStmt(block: BlockStmt): void {
     this.beginScope()

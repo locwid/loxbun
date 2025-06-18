@@ -3,13 +3,14 @@ import {
 	BinaryExpr,
 	CallExpr,
 	Expr,
+	GetFieldExpr,
 	GroupingExpr,
 	LiteralExpr,
 	LogicalExpr,
 	UnaryExpr,
 	VariableExpr,
 } from "./codegen/Expr";
-import { BlockStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, VariableStmt, WhileLoopStmt, type Stmt } from "./codegen/Stmt";
+import { BlockStmt, ClsStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, VariableStmt, WhileLoopStmt, type Stmt } from "./codegen/Stmt";
 import { RuntimeError } from "./Interpreter";
 import { Lox } from "./Lox";
 import { Token } from "./Token";
@@ -41,6 +42,9 @@ export class Parser {
 
 	private declaration(): Stmt | null {
 		try {
+			if (this.match(TokenType.CLASS)) {
+				return this.classDeclaration()
+			}
 			if (this.match(TokenType.FUN)) {
 				return this.fnDeclaration("function");
 			}
@@ -57,7 +61,21 @@ export class Parser {
 		}
 	}
 
-	private fnDeclaration(kind: string): Stmt {
+	private classDeclaration() {
+		const name = this.consume(TokenType.IDENTIFIER, "Expect class name.")
+		this.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
+
+		const methods: FnStmt[] = []
+		while (!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
+			methods.push(this.fnDeclaration("method"))
+		}
+
+		this.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+
+		return new ClsStmt(name, methods)
+	}
+
+	private fnDeclaration(kind: string): FnStmt {
 		const name = this.consume(TokenType.IDENTIFIER, `Expect ${kind} name.`)
 		this.consume(TokenType.LEFT_PAREN, `Expect '(' after ${kind} name.`)
 		const params: Token[] = []
@@ -317,6 +335,9 @@ export class Parser {
 		while (true) {
 			if (this.match(TokenType.LEFT_PAREN)) {
 				expr = this.finishCall(expr)
+			} else if (this.match(TokenType.DOT)) {
+				const name = this.consume(TokenType.IDENTIFIER, "Expect property name after .")
+				expr = new GetFieldExpr(expr, name)
 			} else {
 				break
 			}

@@ -1,5 +1,6 @@
 import { Interpreter, type RuntimeError } from "./Interpreter";
 import { Parser } from "./Parser";
+import { Resolver } from "./Resolver";
 import { Scanner } from "./Scanner";
 import type { Token } from "./Token";
 import { TokenType } from "./TokenType";
@@ -47,6 +48,13 @@ export class Lox {
 		const tokens = scanner.scanTokens();
 		const parser = new Parser(tokens);
 		const statements = parser.parse();
+
+		if (Lox.hadError) {
+			return;
+		}
+
+		const resolver = new Resolver(Lox.interpreter)
+		resolver.resolveStatements(statements)
 
 		if (Lox.hadError) {
 			return;

@@ -50,6 +50,7 @@ export class Return extends Error {
 export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	globals = new Environment()
 	private environment = this.globals
+	private locals = new Map<Expr, number>()
 
 	constructor() {
 		this.globals.define("clock", new class extends LoxCallable {
@@ -75,6 +76,10 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 				Lox.runtimeError(error);
 			}
 		}
+	}
+
+	resolve(expr: Expr, depth: number) {
+		this.locals.set(expr, depth)
 	}
 
 	execute(stmt: Stmt): void {
@@ -152,7 +157,14 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 
 	visitAssignExpr(expr: AssignExpr): unknown {
 		const value = this.evaluate(expr.value)
-		this.environment.assign(expr.name, value)
+		
+		const depth = this.locals.get(expr)
+		if (depth) {
+			this.environment.assignAt(depth, expr.name, value)
+		} else {
+			this.globals.assign(expr.name, value)
+		}
+		
 		return value
 	}
 
@@ -243,7 +255,16 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	}
 
 	visitVariableExpr(variable: VariableExpr): unknown {
-		return this.environment.get(variable.name)
+		return this.lookUpVariable(variable.name, variable)
+	}
+
+	private lookUpVariable(name: Token, expr: Expr) {
+		const depth = this.locals.get(expr)
+		if (depth) {
+			return this.environment.getAt(depth, name.lexeme)
+		} else {
+			return this.globals.get(name)
+		}
 	}
 
 	executeBlock(statements: Stmt[], environment: Environment) {

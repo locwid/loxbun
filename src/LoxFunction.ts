@@ -2,6 +2,7 @@ import type { FnStmt } from "./codegen/Stmt";
 import { Environment } from "./Environment";
 import { Return, type Interpreter } from "./Interpreter";
 import { LoxCallable } from "./LoxCallable";
+import type { LoxInstance } from "./LoxInstance";
 
 export class LoxFunction extends LoxCallable {
   declaration: FnStmt
@@ -16,6 +17,7 @@ export class LoxFunction extends LoxCallable {
   arity(): number {
     return this.declaration.params.length
   }
+
   call(interpreter: Interpreter, ...args: unknown[]): unknown {
     const environment = new Environment(this.closure)
     for (let i = 0; i < this.declaration.params.length; i++) {
@@ -35,6 +37,13 @@ export class LoxFunction extends LoxCallable {
     
     return null
   }
+
+  bind(instance: LoxInstance) {
+    const environment = new Environment(this.closure)
+    environment.define("this", instance)
+    return new LoxFunction(this.declaration, environment)
+  }
+
   toString(): string {
     return `<fn ${this.declaration.name.lexeme}>`
   }

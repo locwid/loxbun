@@ -7,6 +7,8 @@ import {
 	GroupingExpr,
 	LiteralExpr,
 	LogicalExpr,
+	SetFieldExpr,
+	ThisExpr,
 	UnaryExpr,
 	VariableExpr,
 } from "./codegen/Expr";
@@ -233,9 +235,11 @@ export class Parser {
 			const value = this.assignment()
 			if (expr instanceof VariableExpr) {
 				return new AssignExpr(expr.name, value)
+			} else if (expr instanceof GetFieldExpr) {
+				return new SetFieldExpr(expr.obj, expr.name, value)
 			}
 			this.error(equals, "Invalid assignment targe.")
-		}
+		} 
 
 		return expr
 	}
@@ -374,6 +378,10 @@ export class Parser {
 
 		if (this.match(TokenType.STRING, TokenType.NUMBER)) {
 			return new LiteralExpr(this.previous().literal);
+		}
+
+		if (this.match(TokenType.THIS)) {
+			return new ThisExpr(this.previous())
 		}
 
 		if (this.match(TokenType.IDENTIFIER)) {

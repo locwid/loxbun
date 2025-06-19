@@ -9,7 +9,7 @@ const defineVisitor = (
 	for (const type of types) {
 		const [className] = type.split("->");
 		writer.write(
-			`\tvisit${className?.trim()}${baseName}(${className?.trim().toLowerCase()}: ${className?.trim()}${baseName}): T;\n`,
+			`\tvisit${className?.trim()}${baseName}(${baseName.toLowerCase()}: ${className?.trim()}${baseName}): T;\n`,
 		);
 	}
 	writer.write("}");
@@ -95,9 +95,11 @@ defineAst(
 		"Binary   -> left: Expr, operator: Token, right: Expr",
 		"Call     -> callee: Expr, paren: Token, args: Expr[]",
 		"GetField -> obj: Expr, name: Token",
+		"SetField -> obj: Expr, name: Token, value: Expr",
 		"Grouping -> expression: Expr",
 		"Literal  -> value: unknown",
 		"Logical  -> left: Expr, operator: Token, right: Expr",
+		"This     -> keyword: Token", 
 		"Unary    -> operator: Token, right: Expr",
 		"Variable -> name: Token"
 	],

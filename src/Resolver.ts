@@ -1,4 +1,4 @@
-import type { AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, FieldExpr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr, VariableExpr } from "./codegen/Expr";
+import type { AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetFieldExpr, GroupingExpr, LiteralExpr, LogicalExpr, SetFieldExpr, ThisExpr, UnaryExpr, VariableExpr } from "./codegen/Expr";
 import type { BlockStmt, ClsStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, Stmt, StmtVisitor, VariableStmt, WhileLoopStmt } from "./codegen/Stmt";
 import type { Interpreter } from "./Interpreter";
 import { Lox } from "./Lox";
@@ -6,116 +6,145 @@ import type { Token } from "./Token";
 
 enum FunctionType {
   NONE,
-  FUNCTION
+  FUNCTION,
+  METHOD
+}
+
+enum ClassType {
+  NONE,
+  CLASS
 }
 
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   private interpreter: Interpreter
   private scopes: Map<string, boolean>[]
   private currentFunction = FunctionType.NONE;
+  private currentClass = ClassType.NONE;
 
   constructor(interpreter: Interpreter) {
     this.interpreter = interpreter
     this.scopes = []
   }
 
+	visitClsStmt(stmt: ClsStmt): void {
+    const enclosingClass = this.currentClass
+    this.currentClass = ClassType.CLASS
+		this.declare(stmt.name)
+    this.define(stmt.name)
 
-  visitFieldExpr(field: FieldExpr): void {
-    this.resolveExpr(field.obj)
-  }
-
-	visitClsStmt(cls: ClsStmt): void {
-		this.declare(cls.name)
-    this.define(cls.name)
+    this.beginScope()
+    this.scopes[0]?.set('this', true)
+    for (const method of stmt.methods) {
+      const declaration = FunctionType.METHOD;
+      this.resolveFunction(method, declaration)
+    }
+    this.endScope()
+    this.currentClass = enclosingClass
 	}
 
-  visitBlockStmt(block: BlockStmt): void {
+  visitBlockStmt(stmt: BlockStmt): void {
     this.beginScope()
-    this.resolveStatements(block.statements)
+    this.resolveStatements(stmt.statements)
     this.endScope()
   }
 
-  visitExpressionStmt(expression: ExpressionStmt): void {
-    this.resolveExpr(expression.expression)
+  visitExpressionStmt(stmt: ExpressionStmt): void {
+    this.resolveExpr(stmt.expression)
   }
 
-  visitConditionStmt(condition: ConditionStmt): void {
-    this.resolveExpr(condition.condition)
-    this.resolveStatement(condition.thenBranch)
-    if (condition.elseBranch) {
-      this.resolveStatement(condition.elseBranch)
+  visitConditionStmt(stmt: ConditionStmt): void {
+    this.resolveExpr(stmt.condition)
+    this.resolveStatement(stmt.thenBranch)
+    if (stmt.elseBranch) {
+      this.resolveStatement(stmt.elseBranch)
     }
   }
 
-  visitFnStmt(fn: FnStmt): void {
-    this.declare(fn.name)
-    this.define(fn.name)
-    this.resolveFunction(fn, FunctionType.FUNCTION)
+  visitFnStmt(stmt: FnStmt): void {
+    this.declare(stmt.name)
+    this.define(stmt.name)
+    this.resolveFunction(stmt, FunctionType.FUNCTION)
   }
 
-  visitPrintStmt(print: PrintStmt): void {
-    this.resolveExpr(print.expression)
+  visitPrintStmt(stmt: PrintStmt): void {
+    this.resolveExpr(stmt.expression)
   }
 
-  visitReturnValStmt(returnval: ReturnValStmt): void {
+  visitReturnValStmt(stmt: ReturnValStmt): void {
     if (this.currentFunction == FunctionType.NONE) {
-      Lox.errorToken(returnval.keyword, "Can't return from top-level code.")
+      Lox.errorToken(stmt.keyword, "Can't return from top-level code.")
     }
-    if (returnval.value) {
-      this.resolveExpr(returnval.value)
+    if (stmt.value) {
+      this.resolveExpr(stmt.value)
     }
   }
 
-  visitVariableStmt(variable: VariableStmt): void {
-    this.declare(variable.name)
-    if (variable.initializer) {
-      this.resolveExpr(variable.initializer)
+  visitVariableStmt(stmt: VariableStmt): void {
+    this.declare(stmt.name)
+    if (stmt.initializer) {
+      this.resolveExpr(stmt.initializer)
     }
-    this.define(variable.name)
+    this.define(stmt.name)
   }
 
-  visitWhileLoopStmt(whileloop: WhileLoopStmt): void {
-    this.resolveExpr(whileloop.condition)
-    this.resolveStatement(whileloop.body)
+  visitWhileLoopStmt(stmt: WhileLoopStmt): void {
+    this.resolveExpr(stmt.condition)
+    this.resolveStatement(stmt.body)
   }
 
-  visitAssignExpr(assign: AssignExpr): void {
-    this.resolveExpr(assign.value)
-    this.resolveLocal(assign, assign.name)
+  visitThisExpr(expr: ThisExpr): void {
+    if (this.currentClass === ClassType.NONE) {
+      Lox.errorToken(expr.keyword, "Can't use 'this' outside of a class.")
+    }
+    this.resolveLocal(expr, expr.keyword)
   }
 
-  visitBinaryExpr(binary: BinaryExpr): void {
-    this.resolveExpr(binary.left)
-    this.resolveExpr(binary.right)
+  visitSetFieldExpr(expr: SetFieldExpr): void {
+    this.resolveExpr(expr.value)
+    this.resolveExpr(expr.obj)
   }
 
-  visitCallExpr(call: CallExpr): void {
-    this.resolveExpr(call.callee)
-    for (const arg of call.args) {
+  visitGetFieldExpr(expr: GetFieldExpr): void {
+    this.resolveExpr(expr.obj)
+  }
+
+  visitAssignExpr(expr: AssignExpr): void {
+    this.resolveExpr(expr.value)
+    this.resolveLocal(expr, expr.name)
+  }
+
+  visitBinaryExpr(expr: BinaryExpr): void {
+    this.resolveExpr(expr.left)
+    this.resolveExpr(expr.right)
+  }
+
+  visitCallExpr(expr: CallExpr): void {
+    this.resolveExpr(expr.callee)
+    for (const arg of expr.args) {
       this.resolveExpr(arg)
     }
   }
 
-  visitGroupingExpr(grouping: GroupingExpr): void {
-    this.resolveExpr(grouping.expression)
+  visitGroupingExpr(expr: GroupingExpr): void {
+    this.resolveExpr(expr.expression)
   }
 
   visitLiteralExpr(_: LiteralExpr): void {}
 
-  visitLogicalExpr(logical: LogicalExpr): void {
-    this.resolveExpr(logical.left)
-    this.resolveExpr(logical.right)
+  visitLogicalExpr(expr: LogicalExpr): void {
+    this.resolveExpr(expr.left)
+    this.resolveExpr(expr.right)
   }
 
-  visitUnaryExpr(unary: UnaryExpr): void {
-    this.resolveExpr(unary.right)
+  visitUnaryExpr(expr: UnaryExpr): void {
+    this.resolveExpr(expr.right)
   }
 
-  visitVariableExpr(variable: VariableExpr): void {
-    if (this.scopes.length && this.scopes[0]?.get(variable.name.lexeme) === false) {
-      Lox.errorToken(variable.name, `Can't read local variable in it's own initializer.`)
+  visitVariableExpr(expr: VariableExpr): void {
+    if (this.scopes.length && this.scopes[0]?.get(expr.name.lexeme) === false) {
+      Lox.errorToken(expr.name, `Can't read local variable in it's own initializer.`)
     }
-    this.resolveLocal(variable, variable.name)
+    this.resolveLocal(expr, expr.name)
   }
 
   private beginScope() {

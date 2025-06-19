@@ -1,21 +1,28 @@
 import type { Interpreter } from "./Interpreter"
 import { LoxCallable } from "./LoxCallable"
+import type { LoxFunction } from "./LoxFunction"
 import { LoxInstance } from "./LoxInstance"
 
 export class LoxClass extends LoxCallable {
   name: string
+  methods: Map<string, LoxFunction>
 
-  constructor(name: string) {
+  constructor(name: string, methods: Map<string, LoxFunction>) {
     super()
     this.name = name
+    this.methods = methods
+  }
+
+  findMethod(name: string) {
+    return this.methods.get(name) ?? null
   }
 
   arity(): number {
-    throw new Error("Method not implemented.")
+    return 0
   }
+
   call(interpreter: Interpreter, ...args: unknown[]): unknown {
-    const instance = new LoxInstance(this)
-    return instance
+    return new LoxInstance(this)
   }
 
   toString() {

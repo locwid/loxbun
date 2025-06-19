@@ -10,6 +10,8 @@ import type {
 	LogicalExpr,
 	CallExpr,
 	GetFieldExpr,
+	SetFieldExpr,
+	ThisExpr,
 } from "./codegen/Expr";
 import type {
 	BlockStmt,
@@ -69,7 +71,7 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 			}
 		})
 	}
-
+	
 	interpret(stmts: Stmt[]) {
 		try {
 			for (const stmt of stmts) {
@@ -95,9 +97,18 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		return `${value}`;
 	}
 
+	visitThisExpr(expr: ThisExpr): unknown {
+		return this.lookUpVariable(expr.keyword, expr)
+	}
+
 	visitClsStmt(stmt: ClsStmt): void {
 		this.environment.define(stmt.name.lexeme, null)
-		const cls = new LoxClass(stmt.name.lexeme)
+		const methods = new Map<string, LoxFunction>()
+		for (const method of stmt.methods) {
+			const fn = new LoxFunction(method, this.environment)
+			methods.set(method.name.lexeme, fn)
+		}
+		const cls = new LoxClass(stmt.name.lexeme, methods)
 		this.environment.assign(stmt.name, cls)
 	}
 
@@ -149,12 +160,22 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		this.environment.define(stmt.name.lexeme, value)
 	}
 
-	visitGetFieldExpr(field: GetFieldExpr): unknown {
-		const obj = this.evaluate(field.obj)
-		if (obj instanceof LoxInstance) {
-			return obj.get(field.name)
+	visitSetFieldExpr(expr: SetFieldExpr): unknown {
+		const obj = this.evaluate(expr.obj)
+		if (!(obj instanceof LoxInstance)) {
+			throw new RuntimeError(expr.name, "Only instances have fields.")
 		}
-		throw new RuntimeError(field.name, "Only instances have properties.")
+		const value = this.evaluate(expr.value)
+		obj.set(expr.name, value)
+		return value
+	}
+
+	visitGetFieldExpr(expr: GetFieldExpr): unknown {
+		const obj = this.evaluate(expr.obj)
+		if (obj instanceof LoxInstance) {
+			return obj.get(expr.name)
+		}
+		throw new RuntimeError(expr.name, "Only instances have properties.")
 	}
 
 	visitLogicalExpr(expr: LogicalExpr): unknown {
@@ -204,29 +225,29 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		return callee.call(this, ...args)
 	}
 
-	visitBinaryExpr(binary: BinaryExpr): unknown {
-		let left = this.evaluate(binary.left);
-		let right = this.evaluate(binary.right);
+	visitBinaryExpr(expr: BinaryExpr): unknown {
+		let left = this.evaluate(expr.left);
+		let right = this.evaluate(expr.right);
 
-		switch (binary.operator.type) {
+		switch (expr.operator.type) {
 			case TokenType.BANG_EQUAL:
 				return !this.isEqual(left, right);
 			case TokenType.EQUAL_EQUAL:
 				return this.isEqual(left, right);
 			case TokenType.GREATER:
-				this.checkNumberOperands(binary.operator, left, right);
+				this.checkNumberOperands(expr.operator, left, right);
 				return Number(left) > Number(right);
 			case TokenType.GREATER_EQUAL:
-				this.checkNumberOperands(binary.operator, left, right);
+				this.checkNumberOperands(expr.operator, left, right);
 				return Number(left) >= Number(right);
 			case TokenType.LESS:
-				this.checkNumberOperands(binary.operator, left, right);
+				this.checkNumberOperands(expr.operator, left, right);
 				return Number(left) < Number(right);
 			case TokenType.LESS_EQUAL:
-				this.checkNumberOperands(binary.operator, left, right);
+				this.checkNumberOperands(expr.operator, left, right);
 				return Number(left) <= Number(right);
 			case TokenType.MINUS:
-				this.checkNumberOperands(binary.operator, left, right);
+				this.checkNumberOperands(expr.operator, left, right);
 				return Number(left) - Number(right);
 			case TokenType.PLUS:
 				if (typeof left === "string" && typeof right === "string") {
@@ -236,44 +257,44 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 					return Number(left) + Number(right);
 				}
 				throw new RuntimeError(
-					binary.operator,
+					expr.operator,
 					"Operands must be two numbers or two strings.",
 				);
 			case TokenType.SLASH:
-				this.checkNumberOperands(binary.operator, left, right);
+				this.checkNumberOperands(expr.operator, left, right);
 				return Number(left) / Number(right);
 			case TokenType.STAR:
-				this.checkNumberOperands(binary.operator, left, right);
+				this.checkNumberOperands(expr.operator, left, right);
 				return Number(left) * Number(right);
 		}
 
 		return null;
 	}
 	
-	visitGroupingExpr(grouping: GroupingExpr): unknown {
-		return this.evaluate(grouping.expression);
+	visitGroupingExpr(expr: GroupingExpr): unknown {
+		return this.evaluate(expr.expression);
 	}
 
-	visitLiteralExpr(literal: LiteralExpr): unknown {
-		return literal.value;
+	visitLiteralExpr(expr: LiteralExpr): unknown {
+		return expr.value;
 	}
 
-	visitUnaryExpr(unary: UnaryExpr): unknown {
-		const right = this.evaluate(unary.right);
+	visitUnaryExpr(expr: UnaryExpr): unknown {
+		const right = this.evaluate(expr.right);
 
-		switch (unary.operator.type) {
+		switch (expr.operator.type) {
 			case TokenType.BANG:
 				return !this.isTruthy(right);
 			case TokenType.MINUS:
-				this.checkNumberOperand(unary.operator, right);
+				this.checkNumberOperand(expr.operator, right);
 				return -Number(right);
 		}
 
 		return null;
 	}
 
-	visitVariableExpr(variable: VariableExpr): unknown {
-		return this.lookUpVariable(variable.name, variable)
+	visitVariableExpr(expr: VariableExpr): unknown {
+		return this.lookUpVariable(expr.name, expr)
 	}
 
 	private lookUpVariable(name: Token, expr: Expr) {

@@ -24,17 +24,13 @@ export class LoxFunction extends LoxCallable {
     const environment = new Environment(this.closure)
     for (let i = 0; i < this.declaration.params.length; i++) {
       const arg = this.declaration.params[i]
-      if (!arg) {
-        throw new Error("Function call: failed to get arg")
+      if (arg) {
+        environment.define(arg.lexeme, args[i])
       }
-      environment.define(arg.lexeme, args[i])
     }
     try {
       interpreter.executeBlock(this.declaration.body, environment)
     } catch (error) {
-      if (this.isInitializer) {
-        return this.closure.getAt(0, "this")
-      }
       if (error instanceof Return) {
         return error.value
       }

@@ -42,11 +42,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
       this.currentClass = ClassType.SUBCLASS;
       this.resolveExpr(stmt.superclass)
       this.beginScope()
-      this.scopes[0]?.set('super', true)
+      this.peekScope()?.set('super', true)
     }
 
     this.beginScope()
-    this.scopes[0]?.set('this', true)
+    this.peekScope()?.set('this', true)
     for (const method of stmt.methods) {
       let declaration = FunctionType.METHOD;
       if (method.name.lexeme === 'this') {
@@ -217,7 +217,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
   private declare(name: Token) {
     if (!this.scopes.length) return
-    const scope = this.scopes[0]
+    const scope = this.peekScope()
     if (scope) {
       if (scope.has(name.lexeme)) {
         Lox.errorToken(name, "Already a variable with this name in this scope.")
@@ -228,14 +228,19 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
   private define(name: Token) {
     if (!this.scopes.length) return
-    this.scopes[0]?.set(name.lexeme, true)
+    this.peekScope()?.set(name.lexeme, true)
   }
 
   private resolveLocal(expr: Expr, name: Token) {
     for (let i = this.scopes.length - 1; i >= 0; i--) {
       if (this.scopes[i]?.has(name.lexeme)) {
         this.interpreter.resolve(expr, this.scopes.length - 1 - i)
+        return
       }
     }
+  }
+
+  private peekScope() {
+    return this.scopes[this.scopes.length - 1]
   }
 }

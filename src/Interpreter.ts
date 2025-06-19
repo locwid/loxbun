@@ -55,7 +55,7 @@ export class Return extends Error {
 }
 
 export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
-	globals = new Environment()
+	private globals = new Environment()
 	private environment = this.globals
 	private locals = new Map<Expr, number>()
 
@@ -111,7 +111,7 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	}
 
 	stringify(value: unknown): string {
-		if (value === null) return "nil";
+		if (value === null || value === undefined) return "nil";
 		return `${value}`;
 	}
 
@@ -120,6 +120,7 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	}
 
 	visitClsStmt(stmt: ClsStmt): void {
+		this.environment.define(stmt.name.lexeme, null)
 		let superclass: unknown = null
 		if (stmt.superclass) {
 			superclass = this.evaluate(stmt.superclass) 
@@ -127,7 +128,6 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 				throw new RuntimeError(stmt.superclass.name, "Superclass must be a class.")
 			}
 		}
-		this.environment.define(stmt.name.lexeme, null)
 		if (stmt.superclass) {
 			this.environment = new Environment(this.environment)
 			this.environment.define('super', superclass)
@@ -330,8 +330,8 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	}
 
 	private lookUpVariable(name: Token, expr: Expr) {
-		const depth = this.locals.get(expr)
-		if (depth) {
+		const depth = this.locals.get(expr) ?? null
+		if (depth !== null) {
 			return this.environment.getAt(depth, name.lexeme)
 		} else {
 			return this.globals.get(name)

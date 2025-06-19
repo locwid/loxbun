@@ -105,7 +105,7 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 		this.environment.define(stmt.name.lexeme, null)
 		const methods = new Map<string, LoxFunction>()
 		for (const method of stmt.methods) {
-			const fn = new LoxFunction(method, this.environment)
+			const fn = new LoxFunction(method, this.environment, method.name.lexeme === 'this')
 			methods.set(method.name.lexeme, fn)
 		}
 		const cls = new LoxClass(stmt.name.lexeme, methods)
@@ -135,7 +135,7 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	}
 
 	visitFnStmt(stmt: FnStmt): void {
-		const fn = new LoxFunction(stmt, this.environment)
+		const fn = new LoxFunction(stmt, this.environment, false)
 		this.environment.define(stmt.name.lexeme, fn)
 	}
 

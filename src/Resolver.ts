@@ -7,7 +7,8 @@ import type { Token } from "./Token";
 enum FunctionType {
   NONE,
   FUNCTION,
-  METHOD
+  METHOD,
+  INITIALIZER
 }
 
 enum ClassType {
@@ -35,7 +36,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.beginScope()
     this.scopes[0]?.set('this', true)
     for (const method of stmt.methods) {
-      const declaration = FunctionType.METHOD;
+      let declaration = FunctionType.METHOD;
+      if (method.name.lexeme === 'this') {
+        declaration = FunctionType.INITIALIZER;
+      }
       this.resolveFunction(method, declaration)
     }
     this.endScope()
@@ -71,8 +75,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   visitReturnValStmt(stmt: ReturnValStmt): void {
-    if (this.currentFunction == FunctionType.NONE) {
+    if (this.currentFunction === FunctionType.NONE) {
       Lox.errorToken(stmt.keyword, "Can't return from top-level code.")
+    }
+    if (this.currentFunction === FunctionType.INITIALIZER) {
+      Lox.errorToken(stmt.keyword, "Can't return a value from an initializer.")
     }
     if (stmt.value) {
       this.resolveExpr(stmt.value)

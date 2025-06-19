@@ -96,6 +96,7 @@ defineAst(
 		"Call     -> callee: Expr, paren: Token, args: Expr[]",
 		"GetField -> obj: Expr, name: Token",
 		"SetField -> obj: Expr, name: Token, value: Expr",
+		"Super    -> keyword: Token, method: Token",
 		"Grouping -> expression: Expr",
 		"Literal  -> value: unknown",
 		"Logical  -> left: Expr, operator: Token, right: Expr",
@@ -111,7 +112,7 @@ defineAst(
 	"Stmt",
 	[
 		"Block      -> statements: Stmt[]",
-		"Cls        -> name: Token, methods: FnStmt[]",
+		"Cls        -> name: Token, superclass: VariableExpr | null, methods: FnStmt[]",
 		"Expression -> expression: Expr", 
 		"Condition  -> condition: Expr, thenBranch: Stmt, elseBranch: Stmt | null",
 		"Fn         -> name: Token, params: Token[], body: Stmt[]",
@@ -121,7 +122,7 @@ defineAst(
 		"WhileLoop  -> condition: Expr, body: Stmt",
 	],
 	[
-		"import { Expr } from './Expr';", 
+		"import { Expr, VariableExpr } from './Expr';", 
 		"import { Token } from 'src/Token';"
 	],
 );

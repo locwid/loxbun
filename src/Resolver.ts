@@ -1,4 +1,4 @@
-import type { AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetFieldExpr, GroupingExpr, LiteralExpr, LogicalExpr, SetFieldExpr, ThisExpr, UnaryExpr, VariableExpr } from "./codegen/Expr";
+import type { AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetFieldExpr, GroupingExpr, LiteralExpr, LogicalExpr, SetFieldExpr, SuperExpr, ThisExpr, UnaryExpr, VariableExpr } from "./codegen/Expr";
 import type { BlockStmt, ClsStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, Stmt, StmtVisitor, VariableStmt, WhileLoopStmt } from "./codegen/Stmt";
 import type { Interpreter } from "./Interpreter";
 import { Lox } from "./Lox";
@@ -13,7 +13,8 @@ enum FunctionType {
 
 enum ClassType {
   NONE,
-  CLASS
+  CLASS,
+  SUBCLASS
 }
 
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
@@ -33,6 +34,17 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 		this.declare(stmt.name)
     this.define(stmt.name)
 
+    if (stmt.superclass && stmt.name.lexeme === stmt.superclass.name.lexeme) {
+      Lox.errorToken(stmt.superclass.name, "A class can't inherit from itself.")
+    }
+
+    if (stmt.superclass) {
+      this.currentClass = ClassType.SUBCLASS;
+      this.resolveExpr(stmt.superclass)
+      this.beginScope()
+      this.scopes[0]?.set('super', true)
+    }
+
     this.beginScope()
     this.scopes[0]?.set('this', true)
     for (const method of stmt.methods) {
@@ -43,6 +55,11 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
       this.resolveFunction(method, declaration)
     }
     this.endScope()
+
+    if (stmt.superclass) {
+      this.endScope()
+    }
+
     this.currentClass = enclosingClass
 	}
 
@@ -97,6 +114,15 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   visitWhileLoopStmt(stmt: WhileLoopStmt): void {
     this.resolveExpr(stmt.condition)
     this.resolveStatement(stmt.body)
+  }
+
+  visitSuperExpr(expr: SuperExpr): void {
+    if (this.currentClass === ClassType.NONE) {
+      Lox.errorToken(expr.keyword, "Can't use 'super' outside of class.")
+    } else if (this.currentClass !== ClassType.SUBCLASS) {
+      Lox.errorToken(expr.keyword, "Can't use 'super' in a class with no superclass.")
+    }
+    this.resolveLocal(expr, expr.keyword)
   }
 
   visitThisExpr(expr: ThisExpr): void {

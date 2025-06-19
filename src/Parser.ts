@@ -8,6 +8,7 @@ import {
 	LiteralExpr,
 	LogicalExpr,
 	SetFieldExpr,
+	SuperExpr,
 	ThisExpr,
 	UnaryExpr,
 	VariableExpr,
@@ -65,6 +66,13 @@ export class Parser {
 
 	private classDeclaration() {
 		const name = this.consume(TokenType.IDENTIFIER, "Expect class name.")
+
+		let superclass: VariableExpr | null = null
+		if (this.match(TokenType.LESS)) {
+			this.consume(TokenType.IDENTIFIER, "Expect superclass name.")
+			superclass = new VariableExpr(this.previous())
+		}
+
 		this.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
 
 		const methods: FnStmt[] = []
@@ -74,7 +82,7 @@ export class Parser {
 
 		this.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
 
-		return new ClsStmt(name, methods)
+		return new ClsStmt(name, superclass, methods)
 	}
 
 	private fnDeclaration(kind: string): FnStmt {
@@ -378,6 +386,13 @@ export class Parser {
 
 		if (this.match(TokenType.STRING, TokenType.NUMBER)) {
 			return new LiteralExpr(this.previous().literal);
+		}
+
+		if (this.match(TokenType.SUPER)) {
+			const keyword = this.previous()
+			this.consume(TokenType.DOT, "Expect '.' after 'super'.")
+			const method = this.consume(TokenType.IDENTIFIER, "Expect superclass method name.")
+			return new SuperExpr(keyword, method)
 		}
 
 		if (this.match(TokenType.THIS)) {

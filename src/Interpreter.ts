@@ -12,6 +12,7 @@ import type {
 	GetFieldExpr,
 	SetFieldExpr,
 	ThisExpr,
+	SuperExpr,
 } from "./codegen/Expr";
 import type {
 	BlockStmt,
@@ -71,6 +72,23 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 			}
 		})
 	}
+
+	visitSuperExpr(expr: SuperExpr): unknown {
+		const depth = this.locals.get(expr)
+		if (!depth) {
+			throw new RuntimeError(expr.keyword, "Invalid scope.")
+		}
+		const superclass = this.environment.getAt(depth, 'super')
+		const obj = this.environment.getAt(depth - 1, 'this')
+		if (!(superclass instanceof LoxClass) || !(obj instanceof LoxInstance)) {
+			throw new RuntimeError(expr.keyword, "Invalid inheritance.")
+		}
+		const method = superclass.findMethod(expr.method.lexeme)
+		if (!method) {
+			throw new RuntimeError(expr.method, `Undefined property '${expr.method.lexeme}'.`)
+		}
+		return method?.bind(obj)
+	}
 	
 	interpret(stmts: Stmt[]) {
 		try {
@@ -102,13 +120,27 @@ export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
 	}
 
 	visitClsStmt(stmt: ClsStmt): void {
+		let superclass: unknown = null
+		if (stmt.superclass) {
+			superclass = this.evaluate(stmt.superclass) 
+			if (!(superclass instanceof LoxClass)) {
+				throw new RuntimeError(stmt.superclass.name, "Superclass must be a class.")
+			}
+		}
 		this.environment.define(stmt.name.lexeme, null)
+		if (stmt.superclass) {
+			this.environment = new Environment(this.environment)
+			this.environment.define('super', superclass)
+		}
 		const methods = new Map<string, LoxFunction>()
 		for (const method of stmt.methods) {
 			const fn = new LoxFunction(method, this.environment, method.name.lexeme === 'this')
 			methods.set(method.name.lexeme, fn)
 		}
-		const cls = new LoxClass(stmt.name.lexeme, methods)
+		const cls = new LoxClass(stmt.name.lexeme, superclass as LoxClass | null, methods)
+		if (superclass && this.environment.enclosing) {
+			this.environment = this.environment.enclosing
+		}
 		this.environment.assign(stmt.name, cls)
 	}
 

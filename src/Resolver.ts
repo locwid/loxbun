@@ -1,37 +1,64 @@
-import type { AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetFieldExpr, GroupingExpr, LiteralExpr, LogicalExpr, SetFieldExpr, SuperExpr, ThisExpr, UnaryExpr, VariableExpr } from "./codegen/Expr";
-import type { BlockStmt, ClsStmt, ConditionStmt, ExpressionStmt, FnStmt, PrintStmt, ReturnValStmt, Stmt, StmtVisitor, VariableStmt, WhileLoopStmt } from "./codegen/Stmt";
-import type { Interpreter } from "./Interpreter";
-import { Lox } from "./Lox";
-import type { Token } from "./Token";
+import type {
+  AssignExpr,
+  BinaryExpr,
+  CallExpr,
+  Expr,
+  ExprVisitor,
+  GetFieldExpr,
+  GroupingExpr,
+  LiteralExpr,
+  LogicalExpr,
+  SetFieldExpr,
+  SuperExpr,
+  ThisExpr,
+  UnaryExpr,
+  VariableExpr,
+} from './codegen/Expr'
+import type {
+  BlockStmt,
+  ClsStmt,
+  ConditionStmt,
+  ExpressionStmt,
+  FnStmt,
+  PrintStmt,
+  ReturnValStmt,
+  Stmt,
+  StmtVisitor,
+  VariableStmt,
+  WhileLoopStmt,
+} from './codegen/Stmt'
+import type { Interpreter } from './Interpreter'
+import { Lox } from './Lox'
+import type { Token } from './Token'
 
 enum FunctionType {
   NONE,
   FUNCTION,
   METHOD,
-  INITIALIZER
+  INITIALIZER,
 }
 
 enum ClassType {
   NONE,
   CLASS,
-  SUBCLASS
+  SUBCLASS,
 }
 
 export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   private interpreter: Interpreter
   private scopes: Map<string, boolean>[]
-  private currentFunction = FunctionType.NONE;
-  private currentClass = ClassType.NONE;
+  private currentFunction = FunctionType.NONE
+  private currentClass = ClassType.NONE
 
   constructor(interpreter: Interpreter) {
     this.interpreter = interpreter
     this.scopes = []
   }
 
-	visitClsStmt(stmt: ClsStmt): void {
+  visitClsStmt(stmt: ClsStmt): void {
     const enclosingClass = this.currentClass
     this.currentClass = ClassType.CLASS
-		this.declare(stmt.name)
+    this.declare(stmt.name)
     this.define(stmt.name)
 
     if (stmt.superclass && stmt.name.lexeme === stmt.superclass.name.lexeme) {
@@ -39,7 +66,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
 
     if (stmt.superclass) {
-      this.currentClass = ClassType.SUBCLASS;
+      this.currentClass = ClassType.SUBCLASS
       this.resolveExpr(stmt.superclass)
       this.beginScope()
       this.peekScope()?.set('super', true)
@@ -48,9 +75,9 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     this.beginScope()
     this.peekScope()?.set('this', true)
     for (const method of stmt.methods) {
-      let declaration = FunctionType.METHOD;
+      let declaration = FunctionType.METHOD
       if (method.name.lexeme === 'this') {
-        declaration = FunctionType.INITIALIZER;
+        declaration = FunctionType.INITIALIZER
       }
       this.resolveFunction(method, declaration)
     }
@@ -61,7 +88,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     }
 
     this.currentClass = enclosingClass
-	}
+  }
 
   visitBlockStmt(stmt: BlockStmt): void {
     this.beginScope()
@@ -120,7 +147,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     if (this.currentClass === ClassType.NONE) {
       Lox.errorToken(expr.keyword, "Can't use 'super' outside of class.")
     } else if (this.currentClass !== ClassType.SUBCLASS) {
-      Lox.errorToken(expr.keyword, "Can't use 'super' in a class with no superclass.")
+      Lox.errorToken(
+        expr.keyword,
+        "Can't use 'super' in a class with no superclass.",
+      )
     }
     this.resolveLocal(expr, expr.keyword)
   }
@@ -175,7 +205,10 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
 
   visitVariableExpr(expr: VariableExpr): void {
     if (this.scopes.length && this.scopes[0]?.get(expr.name.lexeme) === false) {
-      Lox.errorToken(expr.name, `Can't read local variable in it's own initializer.`)
+      Lox.errorToken(
+        expr.name,
+        `Can't read local variable in it's own initializer.`,
+      )
     }
     this.resolveLocal(expr, expr.name)
   }
@@ -189,7 +222,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
   }
 
   private resolveFunction(stmt: FnStmt, type: FunctionType) {
-    const enclosingFunction = this.currentFunction;
+    const enclosingFunction = this.currentFunction
     this.currentFunction = type
     this.beginScope()
     for (const param of stmt.params) {
@@ -220,7 +253,7 @@ export class Resolver implements ExprVisitor<void>, StmtVisitor<void> {
     const scope = this.peekScope()
     if (scope) {
       if (scope.has(name.lexeme)) {
-        Lox.errorToken(name, "Already a variable with this name in this scope.")
+        Lox.errorToken(name, 'Already a variable with this name in this scope.')
       }
       scope.set(name.lexeme, false)
     }

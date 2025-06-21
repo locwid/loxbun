@@ -1,47 +1,47 @@
-import { expect, test, describe, beforeEach, afterEach } from "bun:test";
-import { Interpreter, Scanner, Parser, Resolver } from "src";
+import { expect, test, describe, beforeEach, afterEach } from 'bun:test'
+import { Interpreter, Scanner, Parser, Resolver } from 'src'
 
-describe("Interpreter", () => {
-  let interpreter: Interpreter;
-  let originalConsoleLog: typeof console.log;
-  let logOutput: string[];
+describe('Interpreter', () => {
+  let interpreter: Interpreter
+  let originalConsoleLog: typeof console.log
+  let logOutput: string[]
 
   beforeEach(() => {
-    interpreter = new Interpreter();
-    logOutput = [];
-    originalConsoleLog = console.log;
+    interpreter = new Interpreter()
+    logOutput = []
+    originalConsoleLog = console.log
     console.log = (...args) => {
-      logOutput.push(args.join(' '));
-    };
-  });
+      logOutput.push(args.join(' '))
+    }
+  })
 
   afterEach(() => {
-    console.log = originalConsoleLog;
-  });
+    console.log = originalConsoleLog
+  })
 
   function interpretCode(source: string): void {
-    const scanner = new Scanner(source);
-    const tokens = scanner.scanTokens();
-    const parser = new Parser(tokens);
-    const statements = parser.parse();
+    const scanner = new Scanner(source)
+    const tokens = scanner.scanTokens()
+    const parser = new Parser(tokens)
+    const statements = parser.parse()
 
-    const resolver = new Resolver(interpreter);
-    resolver.resolveStatements(statements);
+    const resolver = new Resolver(interpreter)
+    resolver.resolveStatements(statements)
 
-    interpreter.interpret(statements);
+    interpreter.interpret(statements)
   }
 
-  test("interprets variable declaration and access", () => {
+  test('interprets variable declaration and access', () => {
     interpretCode(`
       var a = 1;
       var b = 2;
       print a + b;
-    `);
+    `)
 
-    expect(logOutput).toEqual(["3"]);
-  });
+    expect(logOutput).toEqual(['3'])
+  })
 
-  test("interprets control flow", () => {
+  test('interprets control flow', () => {
     interpretCode(`
       var a = 10;
       if (a > 5) {
@@ -49,23 +49,23 @@ describe("Interpreter", () => {
       } else {
         print "smaller";
       }
-    `);
+    `)
 
-    expect(logOutput).toEqual(["greater"]);
-  });
+    expect(logOutput).toEqual(['greater'])
+  })
 
-  test("interprets functions", () => {
+  test('interprets functions', () => {
     interpretCode(`
       fun add(a, b) {
         return a + b;
       }
       print add(2, 3);
-    `);
+    `)
 
-    expect(logOutput).toEqual(["5"]);
-  });
+    expect(logOutput).toEqual(['5'])
+  })
 
-  test("interprets closures", () => {
+  test('interprets closures', () => {
     interpretCode(`
       fun makeCounter() {
         var count = 0;
@@ -79,12 +79,12 @@ describe("Interpreter", () => {
       var counter = makeCounter();
       print counter();
       print counter();
-    `);
+    `)
 
-    expect(logOutput).toEqual(["1", "2"]);
-  });
+    expect(logOutput).toEqual(['1', '2'])
+  })
 
-  test("interprets classes and methods", () => {
+  test('interprets classes and methods', () => {
     interpretCode(`
       class Person {
         init(name) {
@@ -98,12 +98,12 @@ describe("Interpreter", () => {
 
       var bob = Person("Bob");
       print bob.sayHello();
-    `);
+    `)
 
-    expect(logOutput).toEqual(["Hello, Bob!"]);
-  });
+    expect(logOutput).toEqual(['Hello, Bob!'])
+  })
 
-  test("interprets class inheritance", () => {
+  test('interprets class inheritance', () => {
     interpretCode(`
       class Animal {
         init(name) {
@@ -123,12 +123,12 @@ describe("Interpreter", () => {
 
       var dog = Dog("Buddy");
       print dog.speak();
-    `);
+    `)
 
-    expect(logOutput).toEqual(["Woof!"]);
-  });
+    expect(logOutput).toEqual(['Woof!'])
+  })
 
-  test("saving instance context when binding method to a variable", () => {
+  test('saving instance context when binding method to a variable', () => {
     interpretCode(`
       class Person {
         init(name) {
@@ -142,9 +142,8 @@ describe("Interpreter", () => {
 
       var fn = Person("Bob").sayHello;
       print fn();
-    `);
+    `)
 
-    expect(logOutput).toEqual(["Hello, Bob!"]);
-  });
-
-});
+    expect(logOutput).toEqual(['Hello, Bob!'])
+  })
+})

@@ -1,14 +1,18 @@
-import type { Interpreter } from "./Interpreter"
-import { LoxCallable } from "./LoxCallable"
-import type { LoxFunction } from "./LoxFunction"
-import { LoxInstance } from "./LoxInstance"
+import type { Interpreter } from './Interpreter'
+import { LoxCallable } from './LoxCallable'
+import type { LoxFunction } from './LoxFunction'
+import { LoxInstance } from './LoxInstance'
 
 export class LoxClass extends LoxCallable {
   name: string
   superclass: LoxClass | null
   methods: Map<string, LoxFunction>
 
-  constructor(name: string, superclass: LoxClass | null, methods: Map<string, LoxFunction>) {
+  constructor(
+    name: string,
+    superclass: LoxClass | null,
+    methods: Map<string, LoxFunction>,
+  ) {
     super()
     this.name = name
     this.superclass = superclass
@@ -16,7 +20,7 @@ export class LoxClass extends LoxCallable {
   }
 
   findMethod(name: string): LoxFunction | null {
-    let method = this.methods.get(name) 
+    let method = this.methods.get(name)
     if (method) {
       return method
     }

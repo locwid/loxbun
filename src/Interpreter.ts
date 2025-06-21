@@ -1,380 +1,400 @@
 import type {
-	ExprVisitor,
-	BinaryExpr,
-	Expr,
-	GroupingExpr,
-	LiteralExpr,
-	UnaryExpr,
-	VariableExpr,
-	AssignExpr,
-	LogicalExpr,
-	CallExpr,
-	GetFieldExpr,
-	SetFieldExpr,
-	ThisExpr,
-	SuperExpr,
-} from "./codegen/Expr";
+  ExprVisitor,
+  BinaryExpr,
+  Expr,
+  GroupingExpr,
+  LiteralExpr,
+  UnaryExpr,
+  VariableExpr,
+  AssignExpr,
+  LogicalExpr,
+  CallExpr,
+  GetFieldExpr,
+  SetFieldExpr,
+  ThisExpr,
+  SuperExpr,
+} from './codegen/Expr'
 import type {
-	BlockStmt,
-	ClsStmt,
-	ConditionStmt,
-	ExpressionStmt,
-	FnStmt,
-	PrintStmt,
-	ReturnValStmt,
-	Stmt,
-	StmtVisitor,
-	VariableStmt,
-	WhileLoopStmt,
-} from "./codegen/Stmt";
-import { Environment } from "./Environment";
-import { Lox } from "./Lox";
-import { LoxCallable } from "./LoxCallable";
-import { LoxClass } from "./LoxClass";
-import { LoxFunction } from "./LoxFunction";
-import { LoxInstance } from "./LoxInstance";
-import { Token } from "./Token";
-import { TokenType } from "./TokenType";
+  BlockStmt,
+  ClsStmt,
+  ConditionStmt,
+  ExpressionStmt,
+  FnStmt,
+  PrintStmt,
+  ReturnValStmt,
+  Stmt,
+  StmtVisitor,
+  VariableStmt,
+  WhileLoopStmt,
+} from './codegen/Stmt'
+import { Environment } from './Environment'
+import { Lox } from './Lox'
+import { LoxCallable } from './LoxCallable'
+import { LoxClass } from './LoxClass'
+import { LoxFunction } from './LoxFunction'
+import { LoxInstance } from './LoxInstance'
+import { Token } from './Token'
+import { TokenType } from './TokenType'
 
 export class RuntimeError extends Error {
-	token: Token;
+  token: Token
 
-	constructor(token: Token, message: string) {
-		super(message);
-		this.token = token;
-	}
+  constructor(token: Token, message: string) {
+    super(message)
+    this.token = token
+  }
 }
 
 export class Return extends Error {
-	value: unknown
+  value: unknown
 
-	constructor(value: unknown) {
-		super()
-		this.value = value
-	}
+  constructor(value: unknown) {
+    super()
+    this.value = value
+  }
 }
 
 export class Interpreter implements ExprVisitor<unknown>, StmtVisitor<void> {
-	private globals = new Environment()
-	private environment = this.globals
-	private locals = new Map<Expr, number>()
+  private globals = new Environment()
+  private environment = this.globals
+  private locals = new Map<Expr, number>()
 
-	constructor() {
-		this.globals.define("clock", new class extends LoxCallable {
-			arity(): number {
-				return 0
-			}
-			call(_: Interpreter, ...__: unknown[]): unknown {
-				return new Date().getTime() / 1000;
-			}
-			toString(): string {
-				return '<native fn>'
-			}
-		})
-	}
+  constructor() {
+    this.globals.define(
+      'clock',
+      new (class extends LoxCallable {
+        arity(): number {
+          return 0
+        }
+        call(_: Interpreter, ...__: unknown[]): unknown {
+          return new Date().getTime() / 1000
+        }
+        toString(): string {
+          return '<native fn>'
+        }
+      })(),
+    )
+  }
 
-	visitSuperExpr(expr: SuperExpr): unknown {
-		const depth = this.locals.get(expr)
-		if (!depth) {
-			throw new RuntimeError(expr.keyword, "Invalid scope.")
-		}
-		const superclass = this.environment.getAt(depth, 'super')
-		const obj = this.environment.getAt(depth - 1, 'this')
-		if (!(superclass instanceof LoxClass) || !(obj instanceof LoxInstance)) {
-			throw new RuntimeError(expr.keyword, "Invalid inheritance.")
-		}
-		const method = superclass.findMethod(expr.method.lexeme)
-		if (!method) {
-			throw new RuntimeError(expr.method, `Undefined property '${expr.method.lexeme}'.`)
-		}
-		return method?.bind(obj)
-	}
-	
-	interpret(stmts: Stmt[]) {
-		try {
-			for (const stmt of stmts) {
-				this.execute(stmt);
-			}
-		} catch (error) {
-			if (error instanceof RuntimeError) {
-				Lox.runtimeError(error);
-			}
-		}
-	}
+  visitSuperExpr(expr: SuperExpr): unknown {
+    const depth = this.locals.get(expr)
+    if (!depth) {
+      throw new RuntimeError(expr.keyword, 'Invalid scope.')
+    }
+    const superclass = this.environment.getAt(depth, 'super')
+    const obj = this.environment.getAt(depth - 1, 'this')
+    if (!(superclass instanceof LoxClass) || !(obj instanceof LoxInstance)) {
+      throw new RuntimeError(expr.keyword, 'Invalid inheritance.')
+    }
+    const method = superclass.findMethod(expr.method.lexeme)
+    if (!method) {
+      throw new RuntimeError(
+        expr.method,
+        `Undefined property '${expr.method.lexeme}'.`,
+      )
+    }
+    return method?.bind(obj)
+  }
 
-	resolve(expr: Expr, depth: number) {
-		this.locals.set(expr, depth)
-	}
+  interpret(stmts: Stmt[]) {
+    try {
+      for (const stmt of stmts) {
+        this.execute(stmt)
+      }
+    } catch (error) {
+      if (error instanceof RuntimeError) {
+        Lox.runtimeError(error)
+      }
+    }
+  }
 
-	execute(stmt: Stmt): void {
-		stmt.accept(this);
-	}
+  resolve(expr: Expr, depth: number) {
+    this.locals.set(expr, depth)
+  }
 
-	stringify(value: unknown): string {
-		if (value === null || value === undefined) return "nil";
-		return `${value}`;
-	}
+  execute(stmt: Stmt): void {
+    stmt.accept(this)
+  }
 
-	visitThisExpr(expr: ThisExpr): unknown {
-		return this.lookUpVariable(expr.keyword, expr)
-	}
+  stringify(value: unknown): string {
+    if (value === null || value === undefined) return 'nil'
+    return `${value}`
+  }
 
-	visitClsStmt(stmt: ClsStmt): void {
-		this.environment.define(stmt.name.lexeme, null)
-		let superclass: unknown = null
-		if (stmt.superclass) {
-			superclass = this.evaluate(stmt.superclass) 
-			if (!(superclass instanceof LoxClass)) {
-				throw new RuntimeError(stmt.superclass.name, "Superclass must be a class.")
-			}
-		}
-		if (stmt.superclass) {
-			this.environment = new Environment(this.environment)
-			this.environment.define('super', superclass)
-		}
-		const methods = new Map<string, LoxFunction>()
-		for (const method of stmt.methods) {
-			const fn = new LoxFunction(method, this.environment, method.name.lexeme === 'this')
-			methods.set(method.name.lexeme, fn)
-		}
-		const cls = new LoxClass(stmt.name.lexeme, superclass as LoxClass | null, methods)
-		if (superclass && this.environment.enclosing) {
-			this.environment = this.environment.enclosing
-		}
-		this.environment.assign(stmt.name, cls)
-	}
+  visitThisExpr(expr: ThisExpr): unknown {
+    return this.lookUpVariable(expr.keyword, expr)
+  }
 
-	visitWhileLoopStmt(stmt: WhileLoopStmt): void {
-		while (this.isTruthy(this.evaluate(stmt.condition))) {
-			this.execute(stmt.body)
-		}
-	}
+  visitClsStmt(stmt: ClsStmt): void {
+    this.environment.define(stmt.name.lexeme, null)
+    let superclass: unknown = null
+    if (stmt.superclass) {
+      superclass = this.evaluate(stmt.superclass)
+      if (!(superclass instanceof LoxClass)) {
+        throw new RuntimeError(
+          stmt.superclass.name,
+          'Superclass must be a class.',
+        )
+      }
+    }
+    if (stmt.superclass) {
+      this.environment = new Environment(this.environment)
+      this.environment.define('super', superclass)
+    }
+    const methods = new Map<string, LoxFunction>()
+    for (const method of stmt.methods) {
+      const fn = new LoxFunction(
+        method,
+        this.environment,
+        method.name.lexeme === 'this',
+      )
+      methods.set(method.name.lexeme, fn)
+    }
+    const cls = new LoxClass(
+      stmt.name.lexeme,
+      superclass as LoxClass | null,
+      methods,
+    )
+    if (superclass && this.environment.enclosing) {
+      this.environment = this.environment.enclosing
+    }
+    this.environment.assign(stmt.name, cls)
+  }
 
-	visitReturnValStmt(stmt: ReturnValStmt): void {
-		let value: unknown = null
-		if (stmt.value != null) {
-			value = this.evaluate(stmt.value)
-		}
-		throw new Return(value)
-	}
+  visitWhileLoopStmt(stmt: WhileLoopStmt): void {
+    while (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.body)
+    }
+  }
 
-	visitConditionStmt(stmt: ConditionStmt): void {
-		if (this.isTruthy(this.evaluate(stmt.condition))) {
-			this.execute(stmt.thenBranch)
-		} else if (stmt.elseBranch) {
-			this.execute(stmt.elseBranch)
-		}
-	}
+  visitReturnValStmt(stmt: ReturnValStmt): void {
+    let value: unknown = null
+    if (stmt.value != null) {
+      value = this.evaluate(stmt.value)
+    }
+    throw new Return(value)
+  }
 
-	visitFnStmt(stmt: FnStmt): void {
-		const fn = new LoxFunction(stmt, this.environment, false)
-		this.environment.define(stmt.name.lexeme, fn)
-	}
+  visitConditionStmt(stmt: ConditionStmt): void {
+    if (this.isTruthy(this.evaluate(stmt.condition))) {
+      this.execute(stmt.thenBranch)
+    } else if (stmt.elseBranch) {
+      this.execute(stmt.elseBranch)
+    }
+  }
 
-	visitBlockStmt(stmt: BlockStmt): void {
-		this.executeBlock(stmt.statements, new Environment(this.environment))
-	}
+  visitFnStmt(stmt: FnStmt): void {
+    const fn = new LoxFunction(stmt, this.environment, false)
+    this.environment.define(stmt.name.lexeme, fn)
+  }
 
-	visitExpressionStmt(stmt: ExpressionStmt): void {
-		this.evaluate(stmt.expression);
-	}
+  visitBlockStmt(stmt: BlockStmt): void {
+    this.executeBlock(stmt.statements, new Environment(this.environment))
+  }
 
-	visitPrintStmt(stmt: PrintStmt): void {
-		const value = this.evaluate(stmt.expression);
-		console.log(this.stringify(value));
-	}
-	
-	visitVariableStmt(stmt: VariableStmt): void {
-		let value: unknown = null
-		if (stmt.initializer !== null) {
-			value = this.evaluate(stmt.initializer)
-		}
-		this.environment.define(stmt.name.lexeme, value)
-	}
+  visitExpressionStmt(stmt: ExpressionStmt): void {
+    this.evaluate(stmt.expression)
+  }
 
-	visitSetFieldExpr(expr: SetFieldExpr): unknown {
-		const obj = this.evaluate(expr.obj)
-		if (!(obj instanceof LoxInstance)) {
-			throw new RuntimeError(expr.name, "Only instances have fields.")
-		}
-		const value = this.evaluate(expr.value)
-		obj.set(expr.name, value)
-		return value
-	}
+  visitPrintStmt(stmt: PrintStmt): void {
+    const value = this.evaluate(stmt.expression)
+    console.log(this.stringify(value))
+  }
 
-	visitGetFieldExpr(expr: GetFieldExpr): unknown {
-		const obj = this.evaluate(expr.obj)
-		if (obj instanceof LoxInstance) {
-			return obj.get(expr.name)
-		}
-		throw new RuntimeError(expr.name, "Only instances have properties.")
-	}
+  visitVariableStmt(stmt: VariableStmt): void {
+    let value: unknown = null
+    if (stmt.initializer !== null) {
+      value = this.evaluate(stmt.initializer)
+    }
+    this.environment.define(stmt.name.lexeme, value)
+  }
 
-	visitLogicalExpr(expr: LogicalExpr): unknown {
-		const left = this.evaluate(expr.left)
+  visitSetFieldExpr(expr: SetFieldExpr): unknown {
+    const obj = this.evaluate(expr.obj)
+    if (!(obj instanceof LoxInstance)) {
+      throw new RuntimeError(expr.name, 'Only instances have fields.')
+    }
+    const value = this.evaluate(expr.value)
+    obj.set(expr.name, value)
+    return value
+  }
 
-		if (expr.operator.type === TokenType.OR) {
-			if (this.isTruthy(left)) {
-				return left
-			}
-		} else {
-			if (!this.isTruthy(left)) {
-				return left
-			}
-		}
+  visitGetFieldExpr(expr: GetFieldExpr): unknown {
+    const obj = this.evaluate(expr.obj)
+    if (obj instanceof LoxInstance) {
+      return obj.get(expr.name)
+    }
+    throw new RuntimeError(expr.name, 'Only instances have properties.')
+  }
 
-		return this.evaluate(expr.right)
-	}
+  visitLogicalExpr(expr: LogicalExpr): unknown {
+    const left = this.evaluate(expr.left)
 
-	visitAssignExpr(expr: AssignExpr): unknown {
-		const value = this.evaluate(expr.value)
-		
-		const depth = this.locals.get(expr)
-		if (depth) {
-			this.environment.assignAt(depth, expr.name, value)
-		} else {
-			this.globals.assign(expr.name, value)
-		}
-		
-		return value
-	}
+    if (expr.operator.type === TokenType.OR) {
+      if (this.isTruthy(left)) {
+        return left
+      }
+    } else {
+      if (!this.isTruthy(left)) {
+        return left
+      }
+    }
 
-	visitCallExpr(expr: CallExpr): unknown {
-		const callee = this.evaluate(expr.callee)
+    return this.evaluate(expr.right)
+  }
 
-		const args: unknown[] = []
-		for (const arg of expr.args) {
-			args.push(this.evaluate(arg))
-		}
+  visitAssignExpr(expr: AssignExpr): unknown {
+    const value = this.evaluate(expr.value)
 
-		if (!(callee instanceof LoxCallable)) {
-			throw new RuntimeError(expr.paren, "Can only call functions and classes.")
-		}
-		if (args.length !== callee.arity()) {
-			throw new RuntimeError(expr.paren, `Expected ${callee.arity()} arguments but got ${args.length}.`)
-		}
+    const depth = this.locals.get(expr)
+    if (depth) {
+      this.environment.assignAt(depth, expr.name, value)
+    } else {
+      this.globals.assign(expr.name, value)
+    }
 
-		return callee.call(this, ...args)
-	}
+    return value
+  }
 
-	visitBinaryExpr(expr: BinaryExpr): unknown {
-		let left = this.evaluate(expr.left);
-		let right = this.evaluate(expr.right);
+  visitCallExpr(expr: CallExpr): unknown {
+    const callee = this.evaluate(expr.callee)
 
-		switch (expr.operator.type) {
-			case TokenType.BANG_EQUAL:
-				return !this.isEqual(left, right);
-			case TokenType.EQUAL_EQUAL:
-				return this.isEqual(left, right);
-			case TokenType.GREATER:
-				this.checkNumberOperands(expr.operator, left, right);
-				return Number(left) > Number(right);
-			case TokenType.GREATER_EQUAL:
-				this.checkNumberOperands(expr.operator, left, right);
-				return Number(left) >= Number(right);
-			case TokenType.LESS:
-				this.checkNumberOperands(expr.operator, left, right);
-				return Number(left) < Number(right);
-			case TokenType.LESS_EQUAL:
-				this.checkNumberOperands(expr.operator, left, right);
-				return Number(left) <= Number(right);
-			case TokenType.MINUS:
-				this.checkNumberOperands(expr.operator, left, right);
-				return Number(left) - Number(right);
-			case TokenType.PLUS:
-				if (typeof left === "string" && typeof right === "string") {
-					return String(left) + String(right);
-				}
-				if (typeof left === "number" && typeof right === "number") {
-					return Number(left) + Number(right);
-				}
-				throw new RuntimeError(
-					expr.operator,
-					"Operands must be two numbers or two strings.",
-				);
-			case TokenType.SLASH:
-				this.checkNumberOperands(expr.operator, left, right);
-				return Number(left) / Number(right);
-			case TokenType.STAR:
-				this.checkNumberOperands(expr.operator, left, right);
-				return Number(left) * Number(right);
-		}
+    const args: unknown[] = []
+    for (const arg of expr.args) {
+      args.push(this.evaluate(arg))
+    }
 
-		return null;
-	}
-	
-	visitGroupingExpr(expr: GroupingExpr): unknown {
-		return this.evaluate(expr.expression);
-	}
+    if (!(callee instanceof LoxCallable)) {
+      throw new RuntimeError(expr.paren, 'Can only call functions and classes.')
+    }
+    if (args.length !== callee.arity()) {
+      throw new RuntimeError(
+        expr.paren,
+        `Expected ${callee.arity()} arguments but got ${args.length}.`,
+      )
+    }
 
-	visitLiteralExpr(expr: LiteralExpr): unknown {
-		return expr.value;
-	}
+    return callee.call(this, ...args)
+  }
 
-	visitUnaryExpr(expr: UnaryExpr): unknown {
-		const right = this.evaluate(expr.right);
+  visitBinaryExpr(expr: BinaryExpr): unknown {
+    let left = this.evaluate(expr.left)
+    let right = this.evaluate(expr.right)
 
-		switch (expr.operator.type) {
-			case TokenType.BANG:
-				return !this.isTruthy(right);
-			case TokenType.MINUS:
-				this.checkNumberOperand(expr.operator, right);
-				return -Number(right);
-		}
+    switch (expr.operator.type) {
+      case TokenType.BANG_EQUAL:
+        return !this.isEqual(left, right)
+      case TokenType.EQUAL_EQUAL:
+        return this.isEqual(left, right)
+      case TokenType.GREATER:
+        this.checkNumberOperands(expr.operator, left, right)
+        return Number(left) > Number(right)
+      case TokenType.GREATER_EQUAL:
+        this.checkNumberOperands(expr.operator, left, right)
+        return Number(left) >= Number(right)
+      case TokenType.LESS:
+        this.checkNumberOperands(expr.operator, left, right)
+        return Number(left) < Number(right)
+      case TokenType.LESS_EQUAL:
+        this.checkNumberOperands(expr.operator, left, right)
+        return Number(left) <= Number(right)
+      case TokenType.MINUS:
+        this.checkNumberOperands(expr.operator, left, right)
+        return Number(left) - Number(right)
+      case TokenType.PLUS:
+        if (typeof left === 'string' && typeof right === 'string') {
+          return String(left) + String(right)
+        }
+        if (typeof left === 'number' && typeof right === 'number') {
+          return Number(left) + Number(right)
+        }
+        throw new RuntimeError(
+          expr.operator,
+          'Operands must be two numbers or two strings.',
+        )
+      case TokenType.SLASH:
+        this.checkNumberOperands(expr.operator, left, right)
+        return Number(left) / Number(right)
+      case TokenType.STAR:
+        this.checkNumberOperands(expr.operator, left, right)
+        return Number(left) * Number(right)
+    }
 
-		return null;
-	}
+    return null
+  }
 
-	visitVariableExpr(expr: VariableExpr): unknown {
-		return this.lookUpVariable(expr.name, expr)
-	}
+  visitGroupingExpr(expr: GroupingExpr): unknown {
+    return this.evaluate(expr.expression)
+  }
 
-	private lookUpVariable(name: Token, expr: Expr) {
-		const depth = this.locals.get(expr) ?? null
-		if (depth !== null) {
-			return this.environment.getAt(depth, name.lexeme)
-		} else {
-			return this.globals.get(name)
-		}
-	}
+  visitLiteralExpr(expr: LiteralExpr): unknown {
+    return expr.value
+  }
 
-	executeBlock(statements: Stmt[], environment: Environment) {
-		const prevEnvironment = this.environment;
-		try {
-			this.environment = environment
-			for (const stmt of statements) {
-				this.execute(stmt)
-			}
-		} finally {
-			this.environment = prevEnvironment
-		}
-	}
+  visitUnaryExpr(expr: UnaryExpr): unknown {
+    const right = this.evaluate(expr.right)
 
-	private evaluate(expr: Expr): unknown {
-		return expr.accept(this);
-	}
+    switch (expr.operator.type) {
+      case TokenType.BANG:
+        return !this.isTruthy(right)
+      case TokenType.MINUS:
+        this.checkNumberOperand(expr.operator, right)
+        return -Number(right)
+    }
 
-	private isTruthy(value: unknown): boolean {
-		if (value === null) return false;
-		if (typeof value === "boolean") return Boolean(value);
-		return true;
-	}
+    return null
+  }
 
-	private isEqual(left: unknown, right: unknown): boolean {
-		if (left === null && right === null) return true;
-		if (left === null) return false;
-		return left === right;
-	}
+  visitVariableExpr(expr: VariableExpr): unknown {
+    return this.lookUpVariable(expr.name, expr)
+  }
 
-	private checkNumberOperand(operator: Token, operand: unknown) {
-		if (typeof operand !== "number") {
-			throw new RuntimeError(operator, "Operand must be a number.");
-		}
-	}
+  private lookUpVariable(name: Token, expr: Expr) {
+    const depth = this.locals.get(expr) ?? null
+    if (depth !== null) {
+      return this.environment.getAt(depth, name.lexeme)
+    } else {
+      return this.globals.get(name)
+    }
+  }
 
-	private checkNumberOperands(operator: Token, left: unknown, right: unknown) {
-		if (typeof left !== "number" || typeof right !== "number") {
-			throw new RuntimeError(operator, "Operands must be numbers.");
-		}
-	}
+  executeBlock(statements: Stmt[], environment: Environment) {
+    const prevEnvironment = this.environment
+    try {
+      this.environment = environment
+      for (const stmt of statements) {
+        this.execute(stmt)
+      }
+    } finally {
+      this.environment = prevEnvironment
+    }
+  }
+
+  private evaluate(expr: Expr): unknown {
+    return expr.accept(this)
+  }
+
+  private isTruthy(value: unknown): boolean {
+    if (value === null) return false
+    if (typeof value === 'boolean') return Boolean(value)
+    return true
+  }
+
+  private isEqual(left: unknown, right: unknown): boolean {
+    if (left === null && right === null) return true
+    if (left === null) return false
+    return left === right
+  }
+
+  private checkNumberOperand(operator: Token, operand: unknown) {
+    if (typeof operand !== 'number') {
+      throw new RuntimeError(operator, 'Operand must be a number.')
+    }
+  }
+
+  private checkNumberOperands(operator: Token, left: unknown, right: unknown) {
+    if (typeof left !== 'number' || typeof right !== 'number') {
+      throw new RuntimeError(operator, 'Operands must be numbers.')
+    }
+  }
 }

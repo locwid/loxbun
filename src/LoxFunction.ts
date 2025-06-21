@@ -1,15 +1,19 @@
-import type { FnStmt } from "./codegen/Stmt";
-import { Environment } from "./Environment";
-import { Return, type Interpreter } from "./Interpreter";
-import { LoxCallable } from "./LoxCallable";
-import type { LoxInstance } from "./LoxInstance";
+import type { FnStmt } from './codegen/Stmt'
+import { Environment } from './Environment'
+import { Return, type Interpreter } from './Interpreter'
+import { LoxCallable } from './LoxCallable'
+import type { LoxInstance } from './LoxInstance'
 
 export class LoxFunction extends LoxCallable {
   declaration: FnStmt
   private closure: Environment
   private isInitializer: boolean
 
-  constructor(declaration: FnStmt, closure: Environment, isInitializer: boolean) {
+  constructor(
+    declaration: FnStmt,
+    closure: Environment,
+    isInitializer: boolean,
+  ) {
     super()
     this.declaration = declaration
     this.closure = closure
@@ -36,14 +40,14 @@ export class LoxFunction extends LoxCallable {
       }
     }
     if (this.isInitializer) {
-      return this.closure.getAt(0, "this")
+      return this.closure.getAt(0, 'this')
     }
     return null
   }
 
   bind(instance: LoxInstance) {
     const environment = new Environment(this.closure)
-    environment.define("this", instance)
+    environment.define('this', instance)
     return new LoxFunction(this.declaration, environment, this.isInitializer)
   }
 

@@ -1,19 +1,18 @@
 {
-	"name": "loxbun",
-	"type": "module",
-	"author": {
-		"name": ""
-	},
-	"scripts": {
-		"build": "bun build --compile --outfile ./out/loxbun scripts/exec.ts",
-		"codegen": "bun scripts/astCodegen.ts ./src/codegen",
-		"postinstall": "bun run codegen",
-		"test": "bun test"
-	},
-	"devDependencies": {
-		"@types/bun": "latest"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	}
+  "name": "loxbun",
+  "type": "module",
+  "scripts": {
+    "build": "bun build --compile --outfile ./out/loxbun scripts/exec.ts",
+    "codegen": "bun scripts/astCodegen.ts ./src/codegen",
+    "postinstall": "bun run codegen",
+    "test": "bun test",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "prettier": "^3.5.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
 }

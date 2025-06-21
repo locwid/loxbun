@@ -1,5 +1,5 @@
-import { RuntimeError } from "./Interpreter"
-import type { Token } from "./Token"
+import { RuntimeError } from './Interpreter'
+import type { Token } from './Token'
 
 export class Environment {
   enclosing: Environment | null

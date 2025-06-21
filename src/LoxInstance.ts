@@ -1,7 +1,7 @@
-import { RuntimeError } from "./Interpreter";
-import type { LoxClass } from "./LoxClass";
-import type { LoxFunction } from "./LoxFunction";
-import type { Token } from "./Token";
+import { RuntimeError } from './Interpreter'
+import type { LoxClass } from './LoxClass'
+import type { LoxFunction } from './LoxFunction'
+import type { Token } from './Token'
 
 export class LoxInstance {
   private cls: LoxClass

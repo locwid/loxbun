@@ -20,27 +20,23 @@ Loxbun is an implementation of the Lox language described in the book [Crafting 
 
 ## Features
 
-✅ **Variables**
-✅ **Functions**
-  - Parameters
-  - Return values
-  - Scope
-  - Closures
-
-✅ **Control Flow**
-✅ **Loops**
-
-🔄 **Classes**
-  - ✅ Inheritance
-  - ✅ Methods
-  - ✅ Constructor
-  - ⏳ Static methods
-
-✅ **Built-in Functions**
+- [x] **Variables**
+- [x] **Functions**
+  - [x] Parameters
+  - [x] Return values
+  - [x] Scope
+  - [x] Closures
+- [x] **Control Flow**
+- [x] **Loops**
+- [ ] **Classes**
+  - [x] Inheritance
+  - [x] Methods
+  - [x] Constructor
+  - [ ] Static methods
+- [ ] **Built-in Functions**
   - `print`
   - `clock`
-
-⏳ **Arrays** (coming soon)
+- [ ] **Arrays**
 
 ## Installation
 

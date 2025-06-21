@@ -33,7 +33,7 @@ Loxbun is an implementation of the Lox language described in the book [Crafting 
   - [x] Methods
   - [x] Constructor
   - [ ] Static methods
-- [ ] **Built-in Functions**
+- [x] **Built-in Functions**
   - `print`
   - `clock`
 - [ ] **Arrays**

@@ -1,6 +1,20 @@
 {
   "name": "loxbun",
   "type": "module",
+  "version": "0.0.1",
+  "author": {
+    "name": "Maxim Gritsina",
+    "url": "https://github.com/locwid"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/locwid/loxbun.git"
+  },
+  "keywords": [
+    "lox",
+    "bun",
+    "typescript"
+  ],
   "scripts": {
     "build": "bun build --compile --outfile ./out/loxbun scripts/exec.ts",
     "codegen": "bun scripts/astCodegen.ts ./src/codegen",

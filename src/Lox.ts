@@ -10,17 +10,6 @@ export class Lox {
 	private static hadError = false;
 	private static hadRuntimeError = false;
 
-	public start(args: string[]) {
-		if (args.length > 3) {
-			console.log("Usage: loxbun [script]");
-			process.exit(64);
-		} else if (args[2]) {
-			this.runFile(args[2]);
-		} else {
-			this.runPrompt();
-		}
-	}
-
 	public static error(line: number, message: string) {
 		Lox.report(line, "", message);
 	}
@@ -43,7 +32,10 @@ export class Lox {
 		this.hadError = true;
 	}
 
-	private run(source: string) {
+	run(source: string) {
+		Lox.hadError = false;
+    Lox.hadRuntimeError = false;
+
 		const scanner = new Scanner(source);
 		const tokens = scanner.scanTokens();
 		const parser = new Parser(tokens);
@@ -63,14 +55,14 @@ export class Lox {
 		Lox.interpreter.interpret(statements);
 	}
 
-	private async runFile(path: string) {
+	async runFile(path: string) {
 		const content = await Bun.file(path).text();
 		this.run(content);
 		if (Lox.hadError) process.exit(65);
 		if (Lox.hadRuntimeError) process.exit(70);
 	}
 
-	private async runPrompt() {
+	async runPrompt() {
 		console.write("> ");
 		for await (const line of console) {
 			this.run(line);

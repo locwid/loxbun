@@ -1,13 +1,14 @@
 {
 	"name": "loxbun",
-	"module": "index.ts",
 	"type": "module",
-	"private": true,
+	"author": {
+		"name": ""
+	},
 	"scripts": {
-		"build": "bun build src/index.ts --compile --outdir ./out --outfile loxbun",
-		"codegen": "bun codegen/ast.ts ./src/codegen",
-		"start": "bun ./src/index.ts",
-		"postinstall": "bun run codegen"
+		"build": "bun build --compile --outfile ./out/loxbun scripts/exec.ts",
+		"codegen": "bun scripts/astCodegen.ts ./src/codegen",
+		"postinstall": "bun run codegen",
+		"test": "bun test"
 	},
 	"devDependencies": {
 		"@types/bun": "latest"

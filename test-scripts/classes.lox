@@ -1,0 +1,33 @@
+// Test class definition and instantiation
+class Person {
+  init(name) {
+    this.name = name;
+  }
+
+  sayName() {
+    print "My name is " + this.name;
+  }
+}
+
+var person = Person("Bob");
+person.sayName(); // "My name is Bob"
+
+// Test inheritance
+class Employee < Person {
+  init(name, title) {
+    super.init(name);
+    this.title = title;
+  }
+
+  sayTitle() {
+    print "My title is " + this.title;
+  }
+
+  sayNameAndTitle() {
+    super.sayName();
+    this.sayTitle();
+  }
+}
+
+var employee = Employee("Alice", "Engineer");
+employee.sayNameAndTitle();

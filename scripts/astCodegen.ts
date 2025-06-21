@@ -83,7 +83,7 @@ const defineAst = async (
 const args = Bun.argv;
 
 if (!args[2] || args.length > 3) {
-	console.log("Usage: ast <output directory>");
+	console.log("Invalid outdir path");
 	process.exit(64);
 }
 
@@ -100,7 +100,7 @@ defineAst(
 		"Grouping -> expression: Expr",
 		"Literal  -> value: unknown",
 		"Logical  -> left: Expr, operator: Token, right: Expr",
-		"This     -> keyword: Token", 
+		"This     -> keyword: Token",
 		"Unary    -> operator: Token, right: Expr",
 		"Variable -> name: Token"
 	],
@@ -113,7 +113,7 @@ defineAst(
 	[
 		"Block      -> statements: Stmt[]",
 		"Cls        -> name: Token, superclass: VariableExpr | null, methods: FnStmt[]",
-		"Expression -> expression: Expr", 
+		"Expression -> expression: Expr",
 		"Condition  -> condition: Expr, thenBranch: Stmt, elseBranch: Stmt | null",
 		"Fn         -> name: Token, params: Token[], body: Stmt[]",
 		"Print      -> expression: Expr",
@@ -122,7 +122,7 @@ defineAst(
 		"WhileLoop  -> condition: Expr, body: Stmt",
 	],
 	[
-		"import { Expr, VariableExpr } from './Expr';", 
+		"import { Expr, VariableExpr } from './Expr';",
 		"import { Token } from 'src/Token';"
 	],
 );

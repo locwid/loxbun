@@ -1,0 +1,19 @@
+// Test if statements
+var condition = true;
+if (condition) {
+  print "condition is true";
+} else {
+  print "condition is false";
+}
+
+// Test while loop
+var i = 0;
+while (i < 5) {
+  print i;
+  i = i + 1;
+}
+
+// Test for loop
+for (var j = 0; j < 3; j = j + 1) {
+  print j;
+}
